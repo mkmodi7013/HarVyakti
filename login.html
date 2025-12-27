@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Login / Signup</title>
+  <link rel="stylesheet" href="css/auth.css">
+</head>
+<body>
+
+<div class="box">
+  <h2>Login / Signup</h2>
+
+  <input id="email" type="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+
+  <button id="signupBtn">Sign Up</button>
+  <button id="loginBtn">Login</button>
+
+  <p id="msg"></p>
+</div>
+
+<script type="module">import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getAuth,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getDatabase,
+  ref,
+  set
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+/* 🔥 Firebase Config */
+const firebaseConfig = {
+  apiKey: "AIzaSyDT4XZtLbYRsSwM5doqkjMANf2d6oWLCuE",
+  authDomain: "harvyakti.firebaseapp.com",
+  databaseURL: "https://harvyakti-default-rtdb.firebaseio.com",
+  projectId: "harvyakti",
+  storageBucket: "harvyakti.firebasestorage.app",
+  messagingSenderId: "394497239762",
+  appId: "1:394497239762:web:8445303e857f9aeff8db0b",
+  measurementId: "G-EPRQZ4ZH5T"
+};
+
+/* Init Firebase */
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+/* Elements */
+const email = document.getElementById("email");
+const password = document.getElementById("password");
+const msg = document.getElementById("msg");
+
+/* ================= SIGNUP ================= */
+document.getElementById("signupBtn").addEventListener("click", async () => {
+  msg.innerText = "";
+  try {
+    const res = await createUserWithEmailAndPassword(
+      auth,
+      email.value,
+      password.value
+    );
+
+    const uid = res.user.uid;
+
+    // Save user
+    await set(ref(db, "users/" + uid), {
+      email: email.value,
+      roles: [],
+      online: true,
+      createdAt: Date.now()
+    });
+
+    // 👉 Signup → profile
+    window.location.href = "profile.html";
+
+  } catch (e) {
+    msg.innerText = e.message;
+  }
+});
+
+/* ================= LOGIN ================= */
+document.getElementById("loginBtn").addEventListener("click", async () => {
+  msg.innerText = "";
+  try {
+    await signInWithEmailAndPassword(
+      auth,
+      email.value,
+      password.value
+    );
+
+    // 👉 Login → dashboard
+    window.location.href = "dashboard.html";
+
+  } catch (e) {
+    msg.innerText = e.message;
+  }
+});
+</script>
+</body>
+</html>

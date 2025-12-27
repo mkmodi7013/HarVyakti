@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>My Works</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{
+  font-family: Arial, sans-serif;
+  background:#f2f4f7;
+  padding:20px;
+}
+h2{
+  text-align:center;
+}
+.work-card{
+  background:#fff;
+  padding:15px;
+  margin-bottom:15px;
+  border-radius:8px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+.status{
+  font-weight:bold;
+  margin-top:8px;
+}
+.open{ color:green; }
+.accepted{ color:orange; }
+.completed{ color:blue; }
+.empty{
+  text-align:center;
+  color:#666;
+  margin-top:40px;
+}
+</style>
+</head>
+
+<body>
+
+<h2>My Posted Works</h2>
+<div id="worksContainer"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore,
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+/* 🔥 Firebase Config */
+const firebaseConfig = {
+  apiKey: "AIzaSyDT4XZtLbYRsSwM5doqkjMANf2d6oWLCuE",
+  authDomain: "harvyakti.firebaseapp.com",
+  databaseURL: "https://harvyakti-default-rtdb.firebaseio.com",
+  projectId: "harvyakti",
+  storageBucket: "harvyakti.firebasestorage.app",
+  messagingSenderId: "394497239762",
+  appId: "1:394497239762:web:8445303e857f9aeff8db0b",
+  measurementId: "G-EPRQZ4ZH5T"
+};
+
+/* Init */
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const worksContainer = document.getElementById("worksContainer");
+
+/* 🔹 Auth check */
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    alert("Please login first");
+    window.location.href = "login.html";
+    return;
+  }
+
+  loadMyWorks(user.uid);
+});
+
+/* 🔹 Load my works */
+async function loadMyWorks(uid) {
+  worksContainer.innerHTML = "Loading...";
+
+  try {
+    const q = query(
+      collection(db, "works"),
+      where("postedBy", "==", uid),
+      orderBy("createdAt", "desc")
+    );
+
+    const snap = await getDocs(q);
+    worksContainer.innerHTML = "";
+
+    if (snap.empty) {
+      worksContainer.innerHTML = `<div class="empty">No works posted yet</div>`;
+      return;
+    }
+
+    snap.forEach(doc => {
+      const w = doc.data();
+
+      let statusClass = "open";
+      let statusText = "Open (Not accepted yet)";
+
+      if (w.status === "accepted") {
+        statusClass = "accepted";
+        statusText = "Accepted by a worker";
+      } 
+      if (w.status === "completed") {
+        statusClass = "completed";
+        statusText = "Completed";
+      }
+
+      const div = document.createElement("div");
+      div.className = "work-card";
+      div.innerHTML = `
+        <h3>${w.title}</h3>
+        <p>${w.description}</p>
+        <p><b>Amount:</b> ₹${w.amount}</p>
+        <p><b>Location:</b> ${w.location}</p>
+        <p class="status ${statusClass}">Status: ${statusText}</p>
+      `;
+      worksContainer.appendChild(div);
+    });
+
+  } catch (err) {
+    console.error(err);
+    worksContainer.innerHTML = "Error loading works";
+  }
+}
+</script>
+
+</body>
+</html>

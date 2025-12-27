@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dashboard – HarVyakti</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- Dashboard CSS -->
+  <link rel="stylesheet" href="css/dashboard.css">
+</head>
+<body>
+
+<header class="topbar">
+  <h2>HarVyakti</h2>
+  <span class="tagline">Local Work • Ideas • Respect</span>
+
+  <div id="userInfo">
+    <span id="userEmail">Loading...</span>
+    <button id="logoutBtn">Logout</button>
+  </div>
+</header>
+
+<section class="welcome">
+  <h3>Welcome 👋</h3>
+  <p>Choose what you want to do today</p>
+</section>
+
+<section class="cards">
+  <a href="post-work.html" class="card">
+    <h4>Post Work</h4>
+    <p>Chai, delivery, help, service</p>
+  </a>
+
+  <a href="nearby.html" class="card">
+    <h4>Nearby Users</h4>
+    <p>See active people around you</p>
+  </a>
+
+  <a href="ideas.html" class="card">
+    <h4>Share Ideas</h4>
+    <p>Earn respect & rewards</p>
+  </a>
+
+  <a href="profile.html" class="card">
+    <h4>My Profile</h4>
+    <p>Edit role & details</p>
+  </a>
+
+  <a href="my-works.html" class="card">
+    <h4>My Works</h4>
+    <p>Track your posted work</p>
+  </a>
+</section>
+
+<!-- ✅ JS INLINE -->
+<script type="module">
+import { auth } from "./js/firebase.js";
+import { onAuthStateChanged, signOut } 
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const userEmail = document.getElementById("userEmail");
+const logoutBtn = document.getElementById("logoutBtn");
+
+/* 🔐 Auth check */
+onAuthStateChanged(auth, (user) => {
+  if (!user) {
+    // ❌ Not logged in
+    window.location.href = "login.html";
+    return;
+  }
+
+  // ✅ Logged in
+  userEmail.innerText = user.email;
+});
+
+/* 🚪 Logout */
+logoutBtn.addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+    window.location.href = "login.html";
+  } catch (e) {
+    alert(e.message);
+  }
+});
+</script>
+
+</body>
+</html>

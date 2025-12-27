@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>HarVyakti – Local Help, Ideas & Services</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <!-- CSS LINK -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+  <div class="container">
+    <h1>HarVyakti</h1>
+    <p class="tagline">
+      आसपास मदद पाओ • मदद दो • Ideas शेयर करो • Respect कमाओ
+    </p>
+
+    <ul class="features">
+      <li>☕ आसपास से instant help (चाय, काम, delivery)</li>
+      <li>👩‍🍳 Housewives, students, freelancers के लिए काम</li>
+      <li>🚲 Same route travel sharing</li>
+      <li>💡 Share ideas & earn respect</li>
+      <li>🏅 Referral से reward points</li>
+    </ul>
+
+    <div class="btn-group">
+      <button onclick="goToLogin()">Get Started</button>
+      <button class="secondary" onclick="goToHow()">How It Works</button>
+    </div>
+
+    <div class="footer">
+      Built for India • Built for Everyone
+    </div>
+  </div>
+
+  <script>
+    function goToLogin() {
+      window.location.href = "auth.html";
+    }
+
+    function goToHow() {
+      alert(
+        "1. Login करो\n" +
+        "2. Profile बनाओ\n" +
+        "3. Nearby help लो या दो\n" +
+        "4. Respect & reward कमाओ"
+      );
+    }
+  </script>
+
+</body>
+</html>
