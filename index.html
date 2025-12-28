@@ -1,54 +1,163 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>HarVyakti – Local Help, Ideas & Services</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta charset="UTF-8">
+<title>Open Works | HarVyakti</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <!-- CSS LINK -->
-  <link rel="stylesheet" href="css/style.css">
+<style>
+body { margin:0; font-family:'Segoe UI',Tahoma,sans-serif; min-height:100vh; display:flex; flex-direction:column; }
+header { position:fixed; top:0; left:0; width:100%; background:linear-gradient(90deg,#4facfe,#00f2fe); box-shadow:0 4px 8px rgba(0,0,0,.2); z-index:1000; }
+.header-container { max-width:1200px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; padding:15px 20px; }
+.logo { font-size:1.8rem; font-weight:bold; color:white; cursor:pointer; letter-spacing:1px; }
+nav a { color:white; text-decoration:none; margin-left:25px; font-weight:600; }
+main { flex:1; padding:100px 20px 20px; text-align:center; }
+footer { background-color:#1c1c1c; color:white; text-align:center; padding:15px 0; margin-top:auto; }
+h2{text-align:center}
+.work-card{background:#fff; padding:15px; margin-bottom:15px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.1);}
+.status{font-weight:bold; color:green;}
+button{padding:8px 12px; background:#1976d2; color:#fff; border:none; border-radius:5px; cursor:pointer; margin-top:10px;}
+button:disabled{background:#aaa;}
+.empty{text-align:center; color:#666; margin-top:40px;}
+</style>
 </head>
-
 <body>
 
-  <div class="container">
-    <h1>HarVyakti</h1>
-    <p class="tagline">
-      आसपास मदद पाओ • मदद दो • Ideas शेयर करो • Respect कमाओ
-    </p>
+<header>
+<div class="header-container">
+  <div class="logo">HarVyakti</div>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="dashboard.html">Dashboard</a>
+  </nav>
+</div>
+</header>
 
-    <ul class="features">
-      <li>☕ आसपास से instant help (चाय, काम, delivery)</li>
-      <li>👩‍🍳 Housewives, students, freelancers के लिए काम</li>
-      <li>🚲 Same route travel sharing</li>
-      <li>💡 Share ideas & earn respect</li>
-      <li>🏅 Referral से reward points</li>
-    </ul>
+<h2>Available Works</h2>
+<div id="worksContainer"></div>
 
-    <div class="btn-group">
-      <button onclick="goToLogin()">Get Started</button>
-      <button class="secondary" onclick="goToHow()">How It Works</button>
-    </div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, query, where, getDocs, orderBy, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-    <div class="footer">
-      Built for India • Built for Everyone
-    </div>
-  </div>
+// Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyDT4XZtLbYRsSwM5doqkjMANf2d6oWLCuE",
+  authDomain: "harvyakti.firebaseapp.com",
+  projectId: "harvyakti",
+};
 
-  <script>
-    function goToLogin() {
-      window.location.href = "auth.html";
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+const worksContainer = document.getElementById("worksContainer");
+let currentUser = null;
+
+// Haversine formula
+function getDistance(lat1, lon1, lat2, lon2){
+  const R = 6371; // km
+  const dLat = (lat2-lat1) * Math.PI/180;
+  const dLon = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const distKm = R * c;
+  if(distKm >= 1) return distKm.toFixed(2) + " km";
+  return Math.round(distKm*1000) + " m"; // convert to meters
+}
+
+// Auth listener
+onAuthStateChanged(auth, (user)=>{
+  currentUser = user;
+  loadOpenWorks();
+});
+
+async function loadOpenWorks(){
+  worksContainer.innerHTML = "Loading...";
+  try{
+    const q = query(
+      collection(db,"works"),
+      where("status","==","open"),
+      orderBy("createdAt","desc")
+    );
+    const snap = await getDocs(q);
+    worksContainer.innerHTML = "";
+
+    if(snap.empty){
+      worksContainer.innerHTML = `<div class="empty">No open works available</div>`;
+      return;
     }
 
-    function goToHow() {
-      alert(
-        "1. Login करो\n" +
-        "2. Profile बनाओ\n" +
-        "3. Nearby help लो या दो\n" +
-        "4. Respect & reward कमाओ"
-      );
-    }
-  </script>
+    // get current user location
+    let userLat=0, userLng=0;
+    try{
+      const pos = await new Promise((res,rej)=>{
+        if(navigator.geolocation) navigator.geolocation.getCurrentPosition(res,rej);
+        else res({ coords:{ latitude:0, longitude:0 } });
+      });
+      userLat = pos.coords.latitude;
+      userLng = pos.coords.longitude;
+    } catch(e){ console.warn("User location unavailable"); }
 
+    for(const d of snap.docs){
+      const w = d.data();
+      const div = document.createElement("div");
+      div.className = "work-card";
+
+      // fetch requester name
+      let requesterName = "Unknown";
+      try{
+        const requesterSnap = await getDoc(doc(db,"users", w.postedBy));
+        if(requesterSnap.exists()){
+          requesterName = requesterSnap.data().name || "Unknown";
+        }
+      } catch(e){ console.error(e); }
+
+      // distance - show only if current user is NOT requester
+      let distanceText = "";
+      if(currentUser && currentUser.uid !== w.postedBy && userLat && userLng && w.location?.lat && w.location?.lng){
+        distanceText = `<p><b>Distance:</b> ${getDistance(userLat,userLng,w.location.lat,w.location.lng)}</p>`;
+      }
+
+      div.innerHTML = `
+        <h3>${w.title}</h3>
+        <p>${w.description}</p>
+        <p><b>Amount:</b> ₹${w.amount}</p>
+        <p><b>Location:</b> ${w.location?.lat || ""}, ${w.location?.lng || ""}</p>
+        <p><b>Requester:</b> ${requesterName}</p>
+        ${distanceText}
+        <p class="status">Status: Open</p>
+        ${
+          currentUser
+          ? (currentUser.uid === w.postedBy
+              ? `<button disabled>You posted this</button>`
+              : `<button onclick="acceptWork('${d.id}','${w.postedBy}')">Accept Work</button>`
+            )
+          : `<button onclick="goLogin()">Login to Accept</button>`
+        }
+      `;
+      worksContainer.appendChild(div);
+    }
+
+  }catch(err){ console.error(err); worksContainer.innerHTML = "Error loading works"; }
+}
+
+window.acceptWork = async (workId, postedBy)=>{
+  if(!currentUser){ goLogin(); return; }
+  if(currentUser.uid === postedBy){ alert("You cannot accept your own work"); return; }
+  if(!confirm("Do you want to accept this work?")) return;
+
+  try{
+    await updateDoc(doc(db,"works",workId),{ status:"accepted", acceptedBy:currentUser.uid });
+    alert("Work accepted successfully");
+    loadOpenWorks();
+  } catch(err){ console.error(err); alert("Failed to accept work"); }
+};
+
+window.goLogin = ()=>{ window.location.href="login.html"; };
+</script>
+
+<footer>&copy; 2025 HarVyakti. All rights reserved.</footer>
 </body>
 </html>

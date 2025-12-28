@@ -1,102 +1,100 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Login / Signup</title>
-  <link rel="stylesheet" href="css/auth.css">
+<meta charset="UTF-8">
+<title>Login / Signup | HarVyakti</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+  }
+  .box { background: #fff; padding:40px 35px; border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.15); width:100%; max-width:400px; text-align:center; }
+  .box h2 { margin-bottom:30px; color:#1976d2; font-size:2rem; }
+  .box input { width:100%; padding:12px 15px; margin:12px 0; border:1px solid #ccc; border-radius:8px; }
+  .box button { width:48%; padding:12px 0; margin:10px 1%; border:none; border-radius:25px; font-weight:bold; color:#fff; cursor:pointer; }
+  #signupBtn { background: linear-gradient(90deg, #4caf50, #66bb6a); }
+  #loginBtn { background: linear-gradient(90deg, #1976d2, #2196f3); }
+  #msg { margin-top: 15px; color: red; font-weight: bold; min-height: 20px; }
+</style>
 </head>
 <body>
 
 <div class="box">
   <h2>Login / Signup</h2>
-
   <input id="email" type="email" placeholder="Email">
   <input id="password" type="password" placeholder="Password">
-
-  <button id="signupBtn">Sign Up</button>
-  <button id="loginBtn">Login</button>
-
+  <div>
+    <button id="signupBtn">Sign Up</button>
+    <button id="loginBtn">Login</button>
+  </div>
   <p id="msg"></p>
 </div>
 
-<script type="module">import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  getAuth,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {
-  getDatabase,
-  ref,
-  set
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+<script type="module">
+import { auth, rtdb } from "./firebase.js"; // use rtdb for Realtime DB
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { ref, set, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-/* 🔥 Firebase Config */
-const firebaseConfig = {
-  apiKey: "AIzaSyDT4XZtLbYRsSwM5doqkjMANf2d6oWLCuE",
-  authDomain: "harvyakti.firebaseapp.com",
-  databaseURL: "https://harvyakti-default-rtdb.firebaseio.com",
-  projectId: "harvyakti",
-  storageBucket: "harvyakti.firebasestorage.app",
-  messagingSenderId: "394497239762",
-  appId: "1:394497239762:web:8445303e857f9aeff8db0b",
-  measurementId: "G-EPRQZ4ZH5T"
-};
-
-/* Init Firebase */
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
-
-/* Elements */
 const email = document.getElementById("email");
 const password = document.getElementById("password");
 const msg = document.getElementById("msg");
+const signupBtn = document.getElementById("signupBtn");
+const loginBtn = document.getElementById("loginBtn");
 
 /* ================= SIGNUP ================= */
-document.getElementById("signupBtn").addEventListener("click", async () => {
+signupBtn.addEventListener("click", async () => {
   msg.innerText = "";
-  try {
-    const res = await createUserWithEmailAndPassword(
-      auth,
-      email.value,
-      password.value
-    );
+  if(!email.value || !password.value){ msg.innerText="Email & Password required"; return; }
+  if(password.value.length<6){ msg.innerText="Password ≥ 6 chars"; return; }
 
+  signupBtn.disabled = true; loginBtn.disabled = true;
+
+  try {
+    const res = await createUserWithEmailAndPassword(auth,email.value,password.value);
     const uid = res.user.uid;
 
-    // Save user
-    await set(ref(db, "users/" + uid), {
+    // save user info in RTDB
+    await set(ref(rtdb,"users/"+uid), {
       email: email.value,
       roles: [],
       online: true,
-      createdAt: Date.now()
+      createdAt: new Date().toISOString()
     });
 
-    // 👉 Signup → profile
-    window.location.href = "profile.html";
+    window.location.href = "dashboard.html";
 
-  } catch (e) {
+  } catch(e){
     msg.innerText = e.message;
-  }
+  } finally { signupBtn.disabled=false; loginBtn.disabled=false; }
 });
 
 /* ================= LOGIN ================= */
-document.getElementById("loginBtn").addEventListener("click", async () => {
+loginBtn.addEventListener("click", async () => {
   msg.innerText = "";
+  if(!email.value || !password.value){ msg.innerText="Email & Password required"; return; }
+
+  signupBtn.disabled = true; loginBtn.disabled = true;
+
   try {
-    await signInWithEmailAndPassword(
-      auth,
-      email.value,
-      password.value
-    );
+    const userCredential = await signInWithEmailAndPassword(auth,email.value,password.value);
+    const uid = userCredential.user.uid;
 
-    // 👉 Login → dashboard
-    window.location.href = "dashboard.html";
+    const snapshot = await get(ref(rtdb,"users/"+uid));
 
-  } catch (e) {
+    if(snapshot.exists()){ window.location.href="dashboard.html"; }
+    else{ window.location.href="dashboard.html"; }
+
+  } catch(e){
     msg.innerText = e.message;
-  }
+  } finally { signupBtn.disabled=false; loginBtn.disabled=false; }
 });
 </script>
+
 </body>
 </html>

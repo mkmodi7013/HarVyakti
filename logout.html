@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Logout | HarVyakti</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+  }
+
+  .logout-box {
+    background: #fff;
+    padding: 40px 35px;
+    border-radius: 15px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    text-align: center;
+    max-width: 400px;
+  }
+
+  .logout-box h2 {
+    color: #1976d2;
+    margin-bottom: 20px;
+    font-size: 2rem;
+  }
+
+  .logout-box p {
+    margin-bottom: 25px;
+    font-size: 1rem;
+    color: #333;
+  }
+
+  .logout-box button {
+    background: linear-gradient(90deg, #1976d2, #2196f3);
+    border: none;
+    color: white;
+    padding: 12px 25px;
+    border-radius: 25px;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+  }
+
+  .logout-box button:hover {
+    background: linear-gradient(90deg, #1565c0, #1e88e5);
+    transform: translateY(-2px);
+  }
+</style>
+</head>
+<body>
+
+<div class="logout-box">
+  <h2>Logout</h2>
+  <p>Click the button below to log out from HarVyakti.</p>
+  <button id="logoutBtn">Logout</button>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+/* Firebase Config */
+const firebaseConfig = {
+  apiKey: "AIzaSyDT4XZtLbYRsSwM5doqkjMANf2d6oWLCuE",
+  authDomain: "harvyakti.firebaseapp.com",
+  databaseURL: "https://harvyakti-default-rtdb.firebaseio.com",
+  projectId: "harvyakti",
+  storageBucket: "harvyakti.firebasestorage.app",
+  messagingSenderId: "394497239762",
+  appId: "1:394497239762:web:8445303e857f9aeff8db0b",
+  measurementId: "G-EPRQZ4ZH5T"
+};
+
+/* Initialize Firebase */
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+
+/* Logout Button */
+const logoutBtn = document.getElementById("logoutBtn");
+logoutBtn.addEventListener("click", async () => {
+  try {
+    await signOut(auth);
+    alert("You have been logged out successfully!");
+    window.location.href = "index.html";
+  } catch (error) {
+    alert("Error logging out: " + error.message);
+  }
+});
+</script>
+
+</body>
+</html>

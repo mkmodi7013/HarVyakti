@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Nearby Users | HarVyakti</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body{margin:0;font-family:Arial,sans-serif;background:#f2f4f7;padding-top:110px;}
+header{position:fixed;top:0;left:0;width:100%;background:linear-gradient(90deg,#4facfe,#00f2fe);box-shadow:0 4px 8px rgba(0,0,0,0.2);z-index:1000;}
+.header-container{max-width:1200px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;padding:15px 20px;}
+.logo{color:#fff;font-size:1.8rem;font-weight:bold;}
+nav a{color:#fff;text-decoration:none;margin-left:25px;font-weight:600;}
+main{max-width:1000px;margin:0 auto;padding:20px;}
+h2{margin-bottom:15px}
+.controls{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
+.controls input,.controls select{padding:8px 12px;border-radius:8px;border:1px solid #ccc;font-size:14px;}
+.card{padding:18px 22px;border-radius:14px;margin-bottom:15px;position:relative;color:#fff;cursor:pointer;transition:.3s;}
+.card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.15);}
+.role-count{font-weight:700;font-size:16px;}
+.distance{font-size:13px;margin-top:6px;opacity:.9;}
+.empty{color:#64748b;text-align:center;margin-top:40px;font-style:italic;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-container">
+    <div class="logo">HarVyakti</div>
+    <nav>
+      <a href="dashboard.html">Dashboard</a>
+      <a href="index.html">Home</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <h2>Nearby Users by Service</h2>
+
+  <div class="controls">
+    <input id="searchRole" placeholder="Search role…">
+    <select id="roleSelect"><option value="">All Roles</option></select>
+    <select id="distanceFilter">
+      <option value="10">Max Distance: 10 km</option>
+      <option value="5">Max Distance: 5 km</option>
+      <option value="2">Max Distance: 2 km</option>
+    </select>
+  </div>
+
+  <div id="list">Loading nearby users…</div>
+</main>
+
+<script type="module">
+import { auth, db } from './firebase.js';  // ✅ import from firebase.js
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const list = document.getElementById("list");
+const searchRole = document.getElementById("searchRole");
+const roleSelect = document.getElementById("roleSelect");
+const distanceFilter = document.getElementById("distanceFilter");
+
+let myUid = null;
+let myLocation = null;
+let rolesData = {};
+let usersData = {};
+let filteredUsers = [];
+
+onAuthStateChanged(auth, async user=>{
+  if(!user){ location.href="login.html"; return; }
+  myUid = user.uid;
+  await loadRoles();
+  await loadUsers();
+  await loadMyLocation();
+  populateRoleDropdown();
+  renderCards();
+});
+
+async function loadRoles(){
+  const snap = await getDocs(collection(db,"primaryRoles"));
+  rolesData = {};
+  snap.forEach(docu => rolesData[docu.id] = docu.data().roleName);
+}
+
+async function loadUsers(){
+  const usersSnap = await getDocs(collection(db,"users"));
+  const userRolesSnap = await getDocs(collection(db,"userRoles"));
+  usersData = {};
+
+  usersSnap.forEach(d=>{
+    const data = d.data();
+    if(!data.location) return;
+    usersData[d.id] = { location: data.location, roles: [] };
+  });
+
+  userRolesSnap.forEach(d=>{
+    if(usersData[d.id]){
+      usersData[d.id].roles = Object.keys(d.data());
+    }
+  });
+}
+
+async function loadMyLocation(){
+  const snap = await getDoc(doc(db,"users",myUid));
+  if(!snap.exists() || !snap.data().location){
+    list.innerHTML = "<p class='empty'>Please set your location in profile</p>";
+    throw "NO_LOCATION";
+  }
+  myLocation = snap.data().location;
+}
+
+function populateRoleDropdown(){
+  roleSelect.innerHTML="<option value=''>All Roles</option>";
+  Object.keys(rolesData).forEach(rid=>{
+    const option = document.createElement("option");
+    option.value = rid;
+    option.textContent = rolesData[rid];
+    roleSelect.appendChild(option);
+  });
+}
+
+function renderCards(){
+  const searchText = searchRole.value.toLowerCase();
+  const maxDist = parseFloat(distanceFilter.value);
+  const selectedRole = roleSelect.value;
+
+  list.innerHTML="";
+  filteredUsers = [];
+
+  Object.keys(usersData).forEach(uid=>{
+    if(uid===myUid) return;
+
+    const u = usersData[uid];
+    const dist = getDistance(myLocation.lat,myLocation.lng,u.location.lat,u.location.lng);
+    if(dist > maxDist) return;
+
+    const roleNames = u.roles.map(rid => rolesData[rid] || "Unnamed");
+    const matchesRole = selectedRole ? u.roles.includes(selectedRole) : true;
+    const matchesSearch = roleNames.some(name=>name.toLowerCase().includes(searchText));
+
+    if(matchesRole && matchesSearch){
+      filteredUsers.push({uid, roleNames, dist});
+    }
+  });
+
+  if(filteredUsers.length===0){
+    list.innerHTML="<p class='empty'>No nearby users found</p>";
+    return;
+  }
+
+  filteredUsers.sort((a,b) => a.dist-b.dist);
+
+  filteredUsers.forEach(u=>{
+    const intensity = Math.min(1,u.roleNames.length/5);
+    const bgColor = `rgba(37,99,235,${0.3+0.7*intensity})`;
+    const fontSize = `${14 + intensity*4}px`;
+
+    const card = document.createElement("div");
+    card.className="card";
+    card.style.backgroundColor = bgColor;
+    card.style.fontSize = fontSize;
+    card.innerHTML = `<div class="role-count">${u.roleNames.join(", ")}</div>
+                      <div class="distance">Distance: ${u.dist.toFixed(2)} km</div>`;
+    list.appendChild(card);
+  });
+}
+
+searchRole.oninput = renderCards;
+roleSelect.onchange = renderCards;
+distanceFilter.onchange = renderCards;
+
+function getDistance(lat1, lon1, lat2, lon2){
+  const R = 6371;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLon = (lon2-lon1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)**2;
+  return R*(2*Math.atan2(Math.sqrt(a), Math.sqrt(1-a)));
+}
+</script>
+</body>
+</html>

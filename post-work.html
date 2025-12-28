@@ -2,39 +2,53 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Post Work</title>
+<title>Post Work | HarVyakti</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body {
-  font-family: Arial;
-  background: #f2f4f7;
-  padding: 20px;
+body{
+  font-family: Arial,sans-serif;
+  background:#f2f4f7;
+  margin:0;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  padding-top:110px;
 }
-form {
-  background: #fff;
-  padding: 20px;
-  max-width: 400px;
-  margin: auto;
-  border-radius: 8px;
+header {
+  position: fixed; top:0; left:0; width:100%;
+  background: linear-gradient(90deg, #4facfe, #00f2fe);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  z-index:1000;
 }
-input, textarea, button {
-  width: 100%;
-  padding: 10px;
-  margin-top: 10px;
+.header-container {
+  max-width:1200px; margin:0 auto;
+  display:flex; justify-content:space-between; align-items:center;
+  padding:15px 20px;
 }
-button {
-  background: green;
-  color: #fff;
-  border: none;
-  cursor: pointer;
-}
+.logo{ font-size:1.8rem; font-weight:bold; color:white; }
+nav a{ color:white; text-decoration:none; margin-left:25px; font-weight:600; }
+main{ flex:1; padding:100px 20px 20px; text-align:center; }
+footer{ background:#1c1c1c; color:white; text-align:center; padding:15px 0; margin-top:auto; }
+form { background:#fff; padding:20px; max-width:400px; margin:auto; border-radius:8px; }
+input, textarea, button { width:100%; padding:10px; margin-top:10px; }
+button { background:green; color:#fff; border:none; cursor:pointer; }
 </style>
 </head>
 
 <body>
 
-<h2 style="text-align: center">Post New Work</h2>
+<header>
+<div class="header-container">
+  <div class="logo">HarVyakti</div>
+  <nav>
+    <a href="index.html">Home</a>
+    <a href="dashboard.html">Dashboard</a>
+  </nav>
+</div>
+</header>
+
+<h2 style="text-align:center">Post New Work</h2>
 
 <form id="workForm">
   <input type="text" id="title" placeholder="Work Title" required>
@@ -45,101 +59,78 @@ button {
 </form>
 
 <script type="module">
-  // 🔹 Firebase SDK imports
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-  import { getFirestore, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import {
+  getFirestore, collection, addDoc, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-  // 🔹 Firebase config
+// Firebase config
 const firebaseConfig = {
   apiKey: "AIzaSyDT4XZtLbYRsSwM5doqkjMANf2d6oWLCuE",
   authDomain: "harvyakti.firebaseapp.com",
-  databaseURL: "https://harvyakti-default-rtdb.firebaseio.com",
   projectId: "harvyakti",
-  storageBucket: "harvyakti.firebasestorage.app",
-  messagingSenderId: "394497239762",
-  appId: "1:394497239762:web:8445303e857f9aeff8db0b",
-  measurementId: "G-EPRQZ4ZH5T"
 };
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
 
-  // 🔹 Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const auth = getAuth(app);
-  const db = getFirestore(app);
+document.addEventListener("DOMContentLoaded",()=>{
+  const workForm = document.getElementById("workForm");
+  const locationInput = document.getElementById("location");
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const workForm = document.getElementById("workForm");
-    const locationInput = document.getElementById("location");
+  // 🔹 Auto fetch location
+  if(navigator.geolocation){
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        const { latitude, longitude } = pos.coords;
+        locationInput.value = `${latitude},${longitude}`;
+      },
+      err=>{ console.error(err); alert("Could not get location. Allow access."); },
+      {enableHighAccuracy:false, timeout:5000}
+    );
+  }
 
-    if (!workForm) return;
+  // 🔹 Form submit
+  workForm.addEventListener("submit", async e=>{
+    e.preventDefault();
+    if(!auth.currentUser){ alert("Please login first!"); return; }
 
-    // 🔹 Auto fetch location
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          locationInput.value = `${latitude},${longitude}`;
-        },
-        (err) => {
-          console.error("Error getting location:", err);
-          alert("Could not get your location. Please allow location access.");
-        }
-      );
-    } else {
-      alert("Geolocation is not supported by your browser");
-    }
+    const loc = locationInput.value.split(",");
+    const lat = parseFloat(loc[0]);
+    const lng = parseFloat(loc[1]);
 
-    // 🔹 Form submit
-    workForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
+    const workData = {
+      title: document.getElementById("title").value.trim(),
+      description: document.getElementById("description").value.trim(),
+      amount: Number(document.getElementById("amount").value),
+      location: {lat, lng},       // Firestore object
+      postedBy: auth.currentUser.uid,
+      acceptedBy: null,
+      status: "open",
+      createdAt: serverTimestamp()
+    };
 
-      if (!auth.currentUser) {
-        alert("Please login first!");
-        return;
-      }
-
-      const workData = {
-        title: document.getElementById("title").value.trim(),
-        description: document.getElementById("description").value.trim(),
-        amount: Number(document.getElementById("amount").value),
-        location: locationInput.value,
-        postedBy: auth.currentUser.uid,
-        acceptedBy: null,
-        status: "open",
-        createdAt: serverTimestamp()
-      };
-
-      try {
-        await addDoc(collection(db, "works"), workData);
-        alert("Work posted successfully!");
-         window.location.href = "dashboard.html";
-        workForm.reset();
-
-        // Refetch location after reset
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            (position) => {
-              const { latitude, longitude } = position.coords;
-              locationInput.value = `${latitude},${longitude}`;
-            }
-          );
-        }
-      } catch (err) {
-        console.error(err);
-        alert("Error: " + err.message);
-      }
-    });
-  });
-
-  // 🔹 Optional: Auth state listener
-  onAuthStateChanged(auth, (user) => {
-    if (!user) {
-      console.log("No user logged in");
-    } else {
-      console.log("Logged in as:", user.uid);
+    try{
+      await addDoc(collection(db,"works"), workData);
+      alert("Work posted successfully!");
+      window.location.href="dashboard.html";
+    }catch(err){
+      console.error(err);
+      alert("Error: "+err.message);
     }
   });
+});
+
+// Optional auth check
+onAuthStateChanged(auth,user=>{
+  if(!user) console.log("No user logged in");
+  else console.log("Logged in as:", user.uid);
+});
 </script>
 
+<footer>
+&copy; 2025 HarVyakti. All rights reserved.
+</footer>
 </body>
 </html>
