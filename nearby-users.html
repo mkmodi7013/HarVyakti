@@ -17,6 +17,7 @@ h2{margin-bottom:15px}
 .card{padding:18px 22px;border-radius:14px;margin-bottom:15px;position:relative;color:#fff;cursor:pointer;transition:.3s;}
 .card:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,0,0,0.15);}
 .role-count{font-weight:700;font-size:16px;}
+.status-dot{width:10px;height:10px;border-radius:50%;display:inline-block;margin-right:6px;}
 .distance{font-size:13px;margin-top:6px;opacity:.9;}
 .empty{color:#64748b;text-align:center;margin-top:40px;font-style:italic;}
 </style>
@@ -40,9 +41,16 @@ h2{margin-bottom:15px}
     <input id="searchRole" placeholder="Search role…">
     <select id="roleSelect"><option value="">All Roles</option></select>
     <select id="distanceFilter">
-      <option value="10">Max Distance: 10 km</option>
-      <option value="5">Max Distance: 5 km</option>
-      <option value="2">Max Distance: 2 km</option>
+      <option value="0.001">1 m</option>
+      <option value="0.01">10 m</option>
+      <option value="0.1">100 m</option>
+      <option value="1">1 km</option>
+      <option value="5">5 km</option>
+      <option value="10">10 km</option>
+      <option value="20">20 km</option>
+      <option value="30">30 km</option>
+      <option value="50">50 km</option>
+      <option value="100" selected>100 km</option>
     </select>
   </div>
 
@@ -50,9 +58,10 @@ h2{margin-bottom:15px}
 </main>
 
 <script type="module">
-import { auth, db } from './firebase.js';  // ✅ import from firebase.js
+import { auth, db, rdb } from './firebase.js';  // firebase.js should have firestore & rtdb export
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { collection, doc, getDoc, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { ref, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
 const list = document.getElementById("list");
 const searchRole = document.getElementById("searchRole");
@@ -68,6 +77,7 @@ let filteredUsers = [];
 onAuthStateChanged(auth, async user=>{
   if(!user){ location.href="login.html"; return; }
   myUid = user.uid;
+
   await loadRoles();
   await loadUsers();
   await loadMyLocation();
@@ -75,12 +85,14 @@ onAuthStateChanged(auth, async user=>{
   renderCards();
 });
 
+// load primary roles
 async function loadRoles(){
   const snap = await getDocs(collection(db,"primaryRoles"));
   rolesData = {};
-  snap.forEach(docu => rolesData[docu.id] = docu.data().roleName);
+  snap.forEach(d=>rolesData[d.id]=d.data().roleName);
 }
 
+// load all users
 async function loadUsers(){
   const usersSnap = await getDocs(collection(db,"users"));
   const userRolesSnap = await getDocs(collection(db,"userRoles"));
@@ -89,7 +101,7 @@ async function loadUsers(){
   usersSnap.forEach(d=>{
     const data = d.data();
     if(!data.location) return;
-    usersData[d.id] = { location: data.location, roles: [] };
+    usersData[d.id] = { location: {lat: parseFloat(data.location.lat), lng: parseFloat(data.location.lng)}, roles: [] };
   });
 
   userRolesSnap.forEach(d=>{
@@ -99,15 +111,17 @@ async function loadUsers(){
   });
 }
 
+// load current user location
 async function loadMyLocation(){
   const snap = await getDoc(doc(db,"users",myUid));
   if(!snap.exists() || !snap.data().location){
     list.innerHTML = "<p class='empty'>Please set your location in profile</p>";
     throw "NO_LOCATION";
   }
-  myLocation = snap.data().location;
+  myLocation = {lat: parseFloat(snap.data().location.lat), lng: parseFloat(snap.data().location.lng)};
 }
 
+// populate roles dropdown
 function populateRoleDropdown(){
   roleSelect.innerHTML="<option value=''>All Roles</option>";
   Object.keys(rolesData).forEach(rid=>{
@@ -118,7 +132,8 @@ function populateRoleDropdown(){
   });
 }
 
-function renderCards(){
+// render cards
+async function renderCards(){
   const searchText = searchRole.value.toLowerCase();
   const maxDist = parseFloat(distanceFilter.value);
   const selectedRole = roleSelect.value;
@@ -126,40 +141,52 @@ function renderCards(){
   list.innerHTML="";
   filteredUsers = [];
 
-  Object.keys(usersData).forEach(uid=>{
-    if(uid===myUid) return;
-
+  for(const uid of Object.keys(usersData)){
+    if(uid===myUid) continue;
     const u = usersData[uid];
-    const dist = getDistance(myLocation.lat,myLocation.lng,u.location.lat,u.location.lng);
-    if(dist > maxDist) return;
 
-    const roleNames = u.roles.map(rid => rolesData[rid] || "Unnamed");
+    const dist = getDistance(myLocation.lat,myLocation.lng,u.location.lat,u.location.lng);
+    if(dist > maxDist) continue;
+
+    const roleNames = u.roles.map(rid=>rolesData[rid] || "Unnamed");
     const matchesRole = selectedRole ? u.roles.includes(selectedRole) : true;
     const matchesSearch = roleNames.some(name=>name.toLowerCase().includes(searchText));
 
     if(matchesRole && matchesSearch){
-      filteredUsers.push({uid, roleNames, dist});
+      // fetch online/offline from Realtime DB
+      let status = "offline";
+      try{
+        const snap = await get(ref(rdb,`status/${uid}`));
+        if(snap.exists()) status = snap.val().state;
+      }catch(e){ console.warn(e); }
+
+      filteredUsers.push({...u, uid, roleNames, dist, status});
     }
-  });
+  }
 
   if(filteredUsers.length===0){
     list.innerHTML="<p class='empty'>No nearby users found</p>";
     return;
   }
 
-  filteredUsers.sort((a,b) => a.dist-b.dist);
+  // sort by distance
+  filteredUsers.sort((a,b)=>a.dist-b.dist);
 
   filteredUsers.forEach(u=>{
     const intensity = Math.min(1,u.roleNames.length/5);
     const bgColor = `rgba(37,99,235,${0.3+0.7*intensity})`;
     const fontSize = `${14 + intensity*4}px`;
+    const statusColor = u.status==="online"?"#22c55e":"#94a3b8";
 
     const card = document.createElement("div");
     card.className="card";
     card.style.backgroundColor = bgColor;
     card.style.fontSize = fontSize;
-    card.innerHTML = `<div class="role-count">${u.roleNames.join(", ")}</div>
-                      <div class="distance">Distance: ${u.dist.toFixed(2)} km</div>`;
+    card.innerHTML = `
+      <div class="role-count">${u.roleNames.join(", ")}</div>
+      <div class="distance">Distance: ${u.dist.toFixed(2)} km</div>
+      <div class="status-dot" style="background:${statusColor}"></div> ${u.status}
+    `;
     list.appendChild(card);
   });
 }
@@ -168,6 +195,7 @@ searchRole.oninput = renderCards;
 roleSelect.onchange = renderCards;
 distanceFilter.onchange = renderCards;
 
+// Haversine formula
 function getDistance(lat1, lon1, lat2, lon2){
   const R = 6371;
   const dLat = (lat2-lat1)*Math.PI/180;
