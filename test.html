@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RTDB → Firestore Migration</title>
+</head>
+
+<body>
+
+<script type="module">
+import { rtdb, db } from "./firebase.js";
+import { ref, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+import { doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+async function migratePrimaryRoles(){
+  try{
+    const snap = await get(ref(rtdb,"primaryRoles"));
+    if(!snap.exists()){
+      console.log("❌ No roles found in RTDB");
+      return;
+    }
+
+    const roles = snap.val();
+    const keys = Object.keys(roles);
+
+    for(const key of keys){
+      const data = roles[key];
+      await setDoc(doc(db,"primaryRoles",key), data);
+      console.log("✅ Copied role:", key, data.roleName);
+    }
+
+    console.log(`🎉 Migration complete: ${keys.length} roles copied`);
+  }catch(err){
+    console.error("Migration error:", err);
+  }
+}
+
+// ▶️ Run once
+migratePrimaryRoles();
+</script>
+
+</body>
+</html>

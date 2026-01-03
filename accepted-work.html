@@ -5,174 +5,281 @@
 <title>Accepted Works | HarVyakti</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body { margin:0; font-family:'Segoe UI',Tahoma,sans-serif; min-height:100vh; display:flex; flex-direction:column; }
-header { position:fixed; top:0; left:0; width:100%; background:linear-gradient(90deg,#4facfe,#00f2fe); box-shadow:0 4px 8px rgba(0,0,0,.2); z-index:1000; }
-.header-container { max-width:1200px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; padding:15px 20px; }
-.logo { font-size:1.8rem; font-weight:bold; color:white; cursor:pointer; letter-spacing:1px; }
-nav a { color:white; text-decoration:none; margin-left:25px; font-weight:600; }
-h2{text-align:center; margin-top:100px;}
-.work-card{background:#fff; padding:15px; margin:15px auto; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.1); max-width:600px; text-align:left;}
-button{padding:8px 12px; background:#1976d2; color:#fff; border:none; border-radius:5px; cursor:pointer; margin-top:10px;}
+body{
+  margin:0;
+  font-family:'Segoe UI',Tahoma,sans-serif;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+header{
+  position:fixed;
+  top:0;left:0;
+  width:100%;
+  background:linear-gradient(90deg,#4facfe,#00f2fe);
+  box-shadow:0 4px 8px rgba(0,0,0,.2);
+  z-index:1000;
+}
+.header-container{
+  max-width:1200px;
+  margin:auto;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:15px 20px;
+}
+.logo{
+  font-size:1.8rem;
+  font-weight:bold;
+  color:#fff;
+}
+nav a{
+  color:#fff;
+  text-decoration:none;
+  margin-left:25px;
+  font-weight:600;
+}
+h2{
+  text-align:center;
+  margin-top:110px;
+}
+.work-card{
+  background:#fff;
+  padding:15px;
+  margin:15px auto;
+  border-radius:8px;
+  box-shadow:0 2px 6px rgba(0,0,0,.1);
+  max-width:700px;
+}
+button{
+  padding:8px 12px;
+  background:#1976d2;
+  color:#fff;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
 button:disabled{background:#aaa;}
-.empty{text-align:center; color:#666; margin-top:40px;}
-
+.empty{text-align:center;color:#666;margin-top:40px}
 .status-badge{
   padding:4px 8px;
   border-radius:4px;
   color:#fff;
   font-weight:600;
 }
-.status-completed{
-  background:#2e7d32; /* green */
-}
-.status-other{
-  background:#1976d2;
-}
-.rating-stars{
-  color:#fbc02d;
-  font-size:1.1rem;
-  font-weight:600;
-}
+.status-completed{background:#2e7d32}
+.status-accepted{background:#ff9800}
+.status-open{background:#1976d2}
+.rating-stars{color:#fbc02d;font-size:1.1rem}
+.detail-field{margin:4px 0;}
 
-</style>
-
+/* Chat styles */
+.chat-section{
+  border-top:1px solid #ccc;
+  padding-top:10px;
+  margin-top:10px;
+}
+.chat-messages{
+  max-height:200px;
+  overflow-y:auto;
+  border:1px solid #ccc;
+  padding:5px;
+  margin-bottom:5px;
+  border-radius:5px;
+  background:#f9f9f9;
+}
+.chat-message{
+  margin-bottom:5px;
+  padding:5px 8px;
+  border-radius:10px;
+  max-width:70%;
+  word-wrap:break-word;
+  clear:both;
+}
+.chat-message.right{
+  background:#4caf50;
+  color:white;
+  margin-left:auto;
+  text-align:right;
+}
+.chat-message.left{
+  background:#e0e0e0;
+  color:black;
+  margin-right:auto;
+  text-align:left;
+}
+.chat-box{display:flex; gap:5px;}
+.chat-box input{flex:1; padding:5px; border-radius:4px; border:1px solid #ccc;}
 </style>
 </head>
+
 <body>
 
 <header>
-<div class="header-container">
-  <div class="logo">HarVyakti</div>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="dashboard.html">Dashboard</a>
-  </nav>
-</div>
+  <div class="header-container">
+    <div class="logo">HarVyakti</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+    </nav>
+  </div>
 </header>
 
 <h2>Works You Accepted</h2>
 <div id="acceptedWorksContainer"></div>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, query, where, getDocs, doc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { auth, db } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, query, where, getDocs, doc, getDoc, updateDoc, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-// 🔹 Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyDT4XZtLbYRsSwM5doqkjMANf2d6oWLCuE",
-  authDomain: "harvyakti.firebaseapp.com",
-  projectId: "harvyakti",
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-const acceptedWorksContainer = document.getElementById("acceptedWorksContainer");
+const container = document.getElementById("acceptedWorksContainer");
 let currentUser = null;
 
-// 🔐 Auth check
-onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    window.location.href = "login.html";
+onAuthStateChanged(auth, user => {
+  if(!user){
+    location.href="login.html";
     return;
   }
   currentUser = user;
   loadAcceptedWorks();
 });
 
-// 📥 Load accepted works
-async function loadAcceptedWorks() {
-  acceptedWorksContainer.innerHTML = "Loading...";
-
-  try {
+async function loadAcceptedWorks(){
+  container.innerHTML = "Loading...";
+  try{
     const q = query(
-      collection(db, "works"),
+      collection(db, "posts"),
       where("acceptedBy", "==", currentUser.uid)
     );
-
     const snap = await getDocs(q);
-    acceptedWorksContainer.innerHTML = "";
+    container.innerHTML = "";
 
-    if (snap.empty) {
-      acceptedWorksContainer.innerHTML =
-        '<div class="empty">You have not accepted any works yet</div>';
+    if(snap.empty){
+      container.innerHTML = '<div class="empty">You have not accepted any works yet</div>';
       return;
     }
 
-    for (const d of snap.docs) {
+    for(const d of snap.docs){
       const w = d.data();
       const div = document.createElement("div");
       div.className = "work-card";
 
-      // 👤 Fetch requester info
-      let requesterName = "Unknown";
-      let requesterMobile = "N/A";
-
-      try {
-        const requesterSnap = await getDoc(doc(db, "users", w.postedBy));
-        if (requesterSnap.exists()) {
-          const data = requesterSnap.data();
-          requesterName = data.name || "Unknown";
-          requesterMobile = data.mobile || "N/A";
+      // requester info
+      let requesterName="Unknown", requesterPost="Unknown";
+      try{
+        const u = await getDoc(doc(db,"users",w.postedBy));
+        if(u.exists()){
+          requesterName = u.data().name || "Unknown";
+          requesterPost = u.data().role || "Unknown";
         }
-      } catch (e) {
-        console.error("Requester fetch error:", e);
+      }catch(e){ console.error(e); }
+
+      const isCompleted = w.status==="completed";
+      const rating = w.rating || null;
+
+      // category-specific details
+      let categoryDetails = "";
+      if(w.category==="ride") categoryDetails = `
+        <div class="detail-field"><b>From:</b> ${w.from}</div>
+        <div class="detail-field"><b>To:</b> ${w.to}</div>
+        <div class="detail-field"><b>Seats:</b> ${w.seats}</div>`;
+      if(w.category==="work") categoryDetails = `
+        <div class="detail-field"><b>Amount:</b> ₹${w.amount}</div>`;
+      if(w.category==="idea") categoryDetails = `
+        <div class="detail-field"><b>Idea Type:</b> ${w.ideaType}</div>`;
+      if(w.category==="problem") categoryDetails = `
+        <div class="detail-field"><b>Problem Type:</b> ${w.problemType}</div>`;
+
+      // post creation date
+      let createdAt = w.createdAt ? new Date(w.createdAt.seconds*1000).toLocaleString() : "N/A";
+
+      // Chat section
+      let chatSection = "";
+      if(w.status==="accepted"){
+        chatSection = `
+        <div class="chat-section" id="chat-${d.id}">
+          <div class="chat-messages" id="chat-messages-${d.id}"></div>
+          <div class="chat-box">
+            <input type="text" placeholder="Type message...">
+            <button onclick="sendChat('${d.id}', this.previousElementSibling, '${currentUser.uid}', '${requesterName}', '${w.postedBy}')">Send</button>
+          </div>
+        </div>`;
       }
 
-      const isCompleted = w.status === "completed";
-const rating = w.rating || null;
+      div.innerHTML = `
+        <h3>${w.title}</h3>
+        <div class="detail-field"><b>Description:</b> ${w.description}</div>
+        <div class="detail-field"><b>Category:</b> ${w.category}</div>
+        ${categoryDetails}
+        <div class="detail-field"><b>Requester:</b> ${requesterName} (${requesterPost})</div>
+        <div class="detail-field"><b>Created At:</b> ${createdAt}</div>
 
+        ${
+          rating
+            ? `<div class="detail-field"><b>Rating Given:</b>
+                <span class="rating-stars">${"⭐".repeat(rating)} (${rating}/5)</span>
+              </div>`
+            : `<div class="detail-field"><b>Rating:</b> Not given yet</div>`
+        }
 
-      // 🧩 HTML
-     div.innerHTML = `
-  <h3>${w.title}</h3>
-  <p>${w.description}</p>
-  <p><b>Amount:</b> ₹${w.amount}</p>
-  <p><b>Requester:</b> ${requesterName}</p>
+        <div class="detail-field">
+          <b>Status:</b>
+          <span class="status-badge ${isCompleted ? "status-completed":"status-accepted"}">${w.status}</span>
+        </div>
 
-  ${
-    isCompleted
-      ? `<p><b>Mobile:</b> Hidden after completion</p>`
-      : `<p><b>Mobile:</b> ${requesterMobile}
-          <a href="tel:${requesterMobile}">
-            <button>Call</button>
-          </a>
-        </p>`
-  }
+        ${chatSection}
+      `;
 
-  ${
-    rating
-      ? `<p><b>Rating Given:</b> 
-           <span class="rating-stars">
-             ${"⭐".repeat(rating)} (${rating}/5)
-           </span>
-         </p>`
-      : `<p><b>Rating:</b> Not given yet</p>`
-  }
+      container.appendChild(div);
 
-  <p>
-    <b>Status:</b>
-    <span class="status-badge ${isCompleted ? "status-completed" : "status-other"}">
-      ${w.status}
-    </span>
-  </p>
-`;
-
-
-      acceptedWorksContainer.appendChild(div);
+      // subscribe to chat
+      if(w.status==="accepted") subscribeToChat(d.id, currentUser.uid, requesterName, w.postedBy);
     }
-  } catch (err) {
+
+  }catch(err){
     console.error(err);
-    acceptedWorksContainer.innerHTML = "Error loading accepted works";
+    container.innerHTML="Error loading accepted works";
   }
+}
+
+// send chat
+window.sendChat = async (workId,input, senderId, requesterName, postedBy)=>{
+  const text = input.value.trim();
+  if(!text) return;
+  try{
+    await updateDoc(doc(db,"posts",workId),{
+      chats: arrayUnion({
+        senderId,
+        text,
+        timestamp: Date.now()
+      })
+    });
+    input.value="";
+  }catch(e){ alert("Failed: "+e.message); }
+}
+
+// subscribe to chat updates
+function subscribeToChat(workId, currentUserId, requesterName, postedBy){
+  const chatDiv = document.getElementById("chat-messages-"+workId);
+  if(!chatDiv) return;
+  const chatRef = doc(db,"posts",workId);
+  onSnapshot(chatRef, snap=>{
+    const data = snap.data();
+    if(!data.chats) data.chats=[];
+    chatDiv.innerHTML = data.chats.map(c=>{
+      const isSender = c.senderId===currentUserId;
+      const cls = isSender ? "right" : "left";
+      const name = isSender ? currentUser.displayName || "You" : requesterName;
+      return `<div class="chat-message ${cls}"><b>${name}:</b> ${c.text}</div>`;
+    }).join("");
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+  });
 }
 </script>
 
-
-<footer style="margin-top:auto; text-align:center; padding:15px 0; background:#1c1c1c; color:#fff;">
-&copy; 2025 HarVyakti. All rights reserved.
+<footer style="margin-top:auto;text-align:center;padding:15px 0;background:#1c1c1c;color:#fff;">
+© 2025 HarVyakti. All rights reserved.
 </footer>
 
 </body>

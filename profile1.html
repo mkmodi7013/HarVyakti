@@ -108,21 +108,11 @@ button{
 </main>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { auth, db } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import {
-  getFirestore, doc, getDoc, setDoc, updateDoc, collection, getDocs
+  doc, getDoc, setDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-const firebaseConfig = {
-  apiKey: "AIzaSyDT4XZtLbYRsSwM5doqkjMANf2d6oWLCuE",
-  authDomain: "harvyakti.firebaseapp.com",
-  projectId: "harvyakti",
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
 
 const nameInput = document.getElementById("name");
 const emailInput = document.getElementById("email");
@@ -133,9 +123,11 @@ const msg = document.getElementById("msg");
 const locationBtn = document.getElementById("locationBtn");
 const locStatus = document.getElementById("locStatus");
 
-let uid, userLocation = null;
+let uid;
+let userLocation = null;
 let selectedRoles = [];
 
+/* 🔐 Auth check */
 onAuthStateChanged(auth, async user=>{
   if(!user){ location.href="login.html"; return; }
   uid = user.uid;
@@ -144,6 +136,7 @@ onAuthStateChanged(auth, async user=>{
   await loadRoles();
 });
 
+/* 👤 Load profile */
 async function loadProfile(){
   const snap = await getDoc(doc(db,"users",uid));
   if(!snap.exists()) return;
@@ -151,31 +144,40 @@ async function loadProfile(){
   nameInput.value = d.name || "";
   mobileInput.value = d.mobile || "";
   addressInput.value = d.address || "";
+  selectedRoles = d.roles || [];
   if(d.location){
     userLocation = d.location;
     locStatus.innerText = "📍 Location saved";
   }
 }
 
+/* 🧰 Load roles */
 async function loadRoles(){
   rolesBox.innerHTML="";
   const snap = await getDocs(collection(db,"primaryRoles"));
-  snap.forEach(docu=>{
-    const role = docu.data().roleName;
-    const div = document.createElement("label");
-    div.className="role";
+  snap.forEach(r=>{
+    const role = r.data().roleName;
+    const label = document.createElement("label");
+    label.className="role";
+
     const cb = document.createElement("input");
     cb.type="checkbox";
-    cb.onchange=()=> cb.checked
-      ? selectedRoles.push(role)
-      : selectedRoles = selectedRoles.filter(r=>r!==role);
-    div.appendChild(cb);
-    div.append(role);
-    rolesBox.appendChild(div);
+    cb.checked = selectedRoles.includes(role);
+
+    cb.onchange=()=>{
+      if(cb.checked && !selectedRoles.includes(role))
+        selectedRoles.push(role);
+      if(!cb.checked)
+        selectedRoles = selectedRoles.filter(x=>x!==role);
+    };
+
+    label.appendChild(cb);
+    label.append(" " + role);
+    rolesBox.appendChild(label);
   });
 }
 
-/* LOCATION */
+/* 📍 Location */
 locationBtn.onclick=()=>{
   if(!navigator.geolocation){
     locStatus.innerText="Not supported"; return;
@@ -187,11 +189,11 @@ locationBtn.onclick=()=>{
       locStatus.innerText="📍 Location updated";
     },
     ()=>locStatus.innerText="Permission denied",
-    {enableHighAccuracy:false,timeout:5000}
+    {timeout:5000}
   );
 };
 
-/* SAVE */
+/* 💾 Save */
 document.getElementById("saveBtn").onclick=async()=>{
   try{
     await setDoc(doc(db,"users",uid),{

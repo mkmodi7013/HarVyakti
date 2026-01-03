@@ -4,80 +4,94 @@
 <meta charset="UTF-8">
 <title>Dashboard – HarVyakti</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: Arial, sans-serif;
-    background: #f2f4f7;
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    padding-top: 110px; /* space for fixed header */
-  }
-  header {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    background: linear-gradient(90deg, #4facfe, #00f2fe);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-    z-index: 1000;
-  }
-  .header-container {
-    max-width: 1200px;
-    margin: 0 auto;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-  }
-  .logo { font-size: 1.8rem; font-weight: bold; color: white; cursor: pointer; letter-spacing: 1px; }
-  nav a {
-    color: white;
-    text-decoration: none;
-    margin-left: 25px;
-    font-weight: 600;
-    position: relative;
-  }
-  nav a::after {
-    content: '';
-    position: absolute;
-    width: 0;
-    height: 2px;
-    bottom: -3px;
-    left: 0;
-    background: white;
-    transition: width 0.3s ease;
-  }
-  nav a:hover::after { width: 100%; }
-  #userInfo { display: flex; align-items: center; gap: 10px; }
-  #userEmail { font-weight: bold; color: white; }
-  #logoutBtn { padding:6px 12px; border:none; border-radius:5px; background:#e53935; color:#fff; cursor:pointer; }
-  #logoutBtn:hover { background:#d32f2f; }
-  main { flex: 1; padding: 20px; text-align: center; }
-  .welcome { margin: 30px 0; font-size: 22px; color:#1976d2; }
-  .cards {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 20px;
-    padding: 0 20px 40px 20px;
-  }
-  .card {
-    background:#fff;
-    padding:20px;
-    border-radius:10px;
-    box-shadow:0 2px 10px rgba(0,0,0,0.1);
-    text-decoration:none;
-    color:#333;
-    transition:0.3s;
-  }
-  .card:hover { box-shadow:0 4px 15px rgba(0,0,0,0.2); transform: translateY(-3px); }
-  .card h4 { margin-bottom:10px; color:#1976d2; }
-  .card p { font-size:14px; opacity:0.8; }
-  footer { background-color: #1c1c1c; color: white; text-align: center; padding: 15px 0; margin-top: auto; }
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:Arial,sans-serif;
+  background:#f2f4f7;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+  padding-top:110px;
+}
+header{
+  position:fixed;
+  top:0;left:0;
+  width:100%;
+  background:linear-gradient(90deg,#4facfe,#00f2fe);
+  box-shadow:0 4px 8px rgba(0,0,0,.2);
+  z-index:1000;
+}
+.header-container{
+  max-width:1200px;
+  margin:auto;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:15px 20px;
+}
+.logo{font-size:1.8rem;font-weight:bold;color:#fff}
+nav a{
+  color:#fff;
+  text-decoration:none;
+  margin-left:25px;
+  font-weight:600;
+  position:relative;
+}
+nav a::after{
+  content:'';
+  position:absolute;
+  width:0;height:2px;
+  bottom:-3px;left:0;
+  background:#fff;
+  transition:.3s;
+}
+nav a:hover::after{width:100%}
+#userInfo{display:flex;align-items:center;gap:10px}
+#userEmail{color:#fff;font-weight:bold}
+#logoutBtn{
+  padding:6px 12px;
+  border:none;
+  border-radius:5px;
+  background:#e53935;
+  color:#fff;
+  cursor:pointer;
+}
+main{flex:1;padding:20px;text-align:center}
+.welcome{margin:30px 0;font-size:22px;color:#1976d2}
+.cards{
+  display:grid;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+  gap:20px;
+  padding:0 20px 40px;
+}
+.card{
+  background:#fff;
+  padding:20px;
+  border-radius:10px;
+  box-shadow:0 2px 10px rgba(0,0,0,.1);
+  text-decoration:none;
+  color:#333;
+  transition:.3s;
+}
+.card:hover{
+  box-shadow:0 4px 15px rgba(0,0,0,.2);
+  transform:translateY(-3px);
+}
+.card h4{margin-bottom:10px;color:#1976d2}
+.card p{font-size:14px;opacity:.8}
+footer{
+  background:#1c1c1c;
+  color:#fff;
+  text-align:center;
+  padding:15px 0;
+}
 </style>
 </head>
+
 <body>
+
 <header>
   <div class="header-container">
     <div class="logo">HarVyakti</div>
@@ -94,8 +108,9 @@
 
 <main>
   <div class="welcome">Welcome 👋</div>
+
   <div class="cards">
-    <a href="post-work.html" class="card">
+    <a href="post-work1.html" class="card">
       <h4>Post Work</h4>
       <p>Chai, delivery, help, service</p>
     </a>
@@ -113,47 +128,38 @@
     </a>
     <a href="accepted-work.html" class="card">
       <h4>My Accepted Works</h4>
-      <p>Track your posted work</p>
+      <p>Track accepted jobs</p>
     </a>
   </div>
 </main>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { auth } from "./firebase.js";
+import { onAuthStateChanged, signOut } from
+  "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-/* Firebase Config */
-const firebaseConfig = {
-  apiKey: "AIzaSyDT4XZtLbYRsSwM5doqkjMANf2d6oWLCuE",
-  authDomain: "harvyakti.firebaseapp.com",
-  projectId: "harvyakti",
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-
-/* Elements */
 const userEmail = document.getElementById("userEmail");
 const logoutBtn = document.getElementById("logoutBtn");
 
-/* Auth check */
-onAuthStateChanged(auth, (user) => {
+/* Auth Guard */
+onAuthStateChanged(auth,user=>{
   if(!user){
-    window.location.href = "login.html";
+    location.href="login.html";
     return;
   }
-  userEmail.innerText = user.email;
+  userEmail.textContent = user.email;
 });
 
 /* Logout */
-logoutBtn.addEventListener("click", async () => {
+logoutBtn.onclick = async ()=>{
   await signOut(auth);
-  window.location.href = "index.html";
-});
+  location.href="index.html";
+};
 </script>
 
 <footer>
-  &copy; 2025 HarVyakti. All rights reserved.
+  © 2025 HarVyakti. All rights reserved.
 </footer>
+
 </body>
 </html>

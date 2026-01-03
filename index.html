@@ -4,160 +4,239 @@
 <meta charset="UTF-8">
 <title>Open Works | HarVyakti</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#4facfe">
 
 <style>
 body { margin:0; font-family:'Segoe UI',Tahoma,sans-serif; min-height:100vh; display:flex; flex-direction:column; }
 header { position:fixed; top:0; left:0; width:100%; background:linear-gradient(90deg,#4facfe,#00f2fe); box-shadow:0 4px 8px rgba(0,0,0,.2); z-index:1000; }
 .header-container { max-width:1200px; margin:0 auto; display:flex; justify-content:space-between; align-items:center; padding:15px 20px; }
-.logo { font-size:1.8rem; font-weight:bold; color:white; cursor:pointer; letter-spacing:1px; }
+.logo { font-size:1.8rem; font-weight:bold; color:white; cursor:pointer; }
 nav a { color:white; text-decoration:none; margin-left:25px; font-weight:600; }
-main { flex:1; padding:100px 20px 20px; text-align:center; }
-footer { background-color:#1c1c1c; color:white; text-align:center; padding:15px 0; margin-top:auto; }
-h2{text-align:center}
+main { flex:1; padding:120px 20px 20px; }
+footer { background:#1c1c1c; color:#fff; text-align:center; padding:15px; }
+
+.filters { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+.filters select { padding:8px 10px; border-radius:5px; border:1px solid #ccc; }
+
 .work-card{background:#fff; padding:15px; margin-bottom:15px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.1);}
-.status{font-weight:bold; color:green;}
-button{padding:8px 12px; background:#1976d2; color:#fff; border:none; border-radius:5px; cursor:pointer; margin-top:10px;}
-button:disabled{background:#aaa;}
-.empty{text-align:center; color:#666; margin-top:40px;}
+.work-card h3{margin-bottom:5px;}
+.work-card p{margin:5px 0;}
+.status-badge{padding:4px 8px;border-radius:4px;color:#fff;font-weight:600;}
+.status-open{background:#1976d2;}
+.status-other{background:#2e7d32;}
+.empty{text-align:center;color:#666;margin-top:40px;}
+button{padding:8px 12px; background:#1976d2; color:#fff; border:none; border-radius:5px; cursor:pointer;}
+button:disabled{background:#aaa; cursor:not-allowed;}
+
+.comment-section{display:none; margin-top:10px; border-top:1px solid #ccc; padding-top:10px;}
+.comment-item{margin-bottom:5px; font-size:14px; background:#f1f1f1; padding:5px 8px; border-radius:5px;}
+.comment-box{display:flex; gap:5px; margin-top:5px;}
+.comment-box input{flex:1; padding:5px; border-radius:4px; border:1px solid #ccc;}
 </style>
 </head>
 <body>
 
 <header>
-<div class="header-container">
-  <div class="logo">HarVyakti</div>
-  <nav>
-    <a href="index.html">Home</a>
-    <a href="dashboard.html">Dashboard</a>
-  </nav>
-</div>
+  <div class="header-container">
+    <div class="logo">HarVyakti</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+    </nav>
+  </div>
 </header>
 
-<h2>Available Works</h2>
+<main>
+<div class="filters">
+  <select id="categoryFilter">
+    <option value="all">All Categories</option>
+    <option value="ride">Ride</option>
+    <option value="work">Work</option>
+    <option value="idea">Idea</option>
+    <option value="problem">Problem</option>
+  </select>
+
+  <select id="distanceFilter">
+    <option value="all">All distances</option>
+    <option value="0.1">100 meters</option>
+    <option value="1">1 km</option>
+    <option value="5">5 km</option>
+    <option value="10">10 km</option>
+    <option value="50">50 km</option>
+  </select>
+</div>
+
 <div id="worksContainer"></div>
+</main>
+
+<footer>© 2025 HarVyakti</footer>
 
 <script type="module">
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, query, where, getDocs, orderBy, doc, updateDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-// Firebase config
-const firebaseConfig = {
-  apiKey: "AIzaSyDT4XZtLbYRsSwM5doqkjMANf2d6oWLCuE",
-  authDomain: "harvyakti.firebaseapp.com",
-  projectId: "harvyakti",
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
+import { auth, db } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, getDocs, doc, getDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const worksContainer = document.getElementById("worksContainer");
+const distanceFilter = document.getElementById("distanceFilter");
+const categoryFilter = document.getElementById("categoryFilter");
+
+let userLat = null, userLng = null;
+let allWorks = [];
 let currentUser = null;
 
-// Haversine formula
-function getDistance(lat1, lon1, lat2, lon2){
-  const R = 6371; // km
-  const dLat = (lat2-lat1) * Math.PI/180;
-  const dLon = (lon2-lon1) * Math.PI/180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  const distKm = R * c;
-  if(distKm >= 1) return distKm.toFixed(2) + " km";
-  return Math.round(distKm*1000) + " m"; // convert to meters
-}
-
-// Auth listener
-onAuthStateChanged(auth, (user)=>{
+// 🔐 Auth check
+onAuthStateChanged(auth, async user => {
+  if(!user){ location.href="login.html"; return; }
   currentUser = user;
-  loadOpenWorks();
+  getUserLocation();
+  await subscribeToPosts(); // real-time updates
 });
 
-async function loadOpenWorks(){
-  worksContainer.innerHTML = "Loading...";
-  try{
-    const q = query(
-      collection(db,"works"),
-      where("status","==","open"),
-      orderBy("createdAt","desc")
-    );
-    const snap = await getDocs(q);
-    worksContainer.innerHTML = "";
+distanceFilter.addEventListener("change", renderWorks);
+categoryFilter.addEventListener("change", renderWorks);
 
-    if(snap.empty){
-      worksContainer.innerHTML = `<div class="empty">No open works available</div>`;
-      return;
-    }
-
-    // get current user location
-    let userLat=0, userLng=0;
-    try{
-      const pos = await new Promise((res,rej)=>{
-        if(navigator.geolocation) navigator.geolocation.getCurrentPosition(res,rej);
-        else res({ coords:{ latitude:0, longitude:0 } });
-      });
-      userLat = pos.coords.latitude;
-      userLng = pos.coords.longitude;
-    } catch(e){ console.warn("User location unavailable"); }
-
-    for(const d of snap.docs){
-      const w = d.data();
-      const div = document.createElement("div");
-      div.className = "work-card";
-
-      // fetch requester name
-      let requesterName = "Unknown";
-      try{
-        const requesterSnap = await getDoc(doc(db,"users", w.postedBy));
-        if(requesterSnap.exists()){
-          requesterName = requesterSnap.data().name || "Unknown";
-        }
-      } catch(e){ console.error(e); }
-
-      // distance - show only if current user is NOT requester
-      let distanceText = "";
-      if(currentUser && currentUser.uid !== w.postedBy && userLat && userLng && w.location?.lat && w.location?.lng){
-        distanceText = `<p><b>Distance:</b> ${getDistance(userLat,userLng,w.location.lat,w.location.lng)}</p>`;
-      }
-
-      div.innerHTML = `
-        <h3>${w.title}</h3>
-        <p>${w.description}</p>
-        <p><b>Amount:</b> ₹${w.amount}</p>
-        <p><b>Location:</b> ${w.location?.lat || ""}, ${w.location?.lng || ""}</p>
-        <p><b>Requester:</b> ${requesterName}</p>
-        ${distanceText}
-        <p class="status">Status: Open</p>
-        ${
-          currentUser
-          ? (currentUser.uid === w.postedBy
-              ? `<button disabled>You posted this</button>`
-              : `<button onclick="acceptWork('${d.id}','${w.postedBy}')">Accept Work</button>`
-            )
-          : `<button onclick="goLogin()">Login to Accept</button>`
-        }
-      `;
-      worksContainer.appendChild(div);
-    }
-
-  }catch(err){ console.error(err); worksContainer.innerHTML = "Error loading works"; }
+function getUserLocation(){
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(pos => {
+    userLat = pos.coords.latitude;
+    userLng = pos.coords.longitude;
+    renderWorks();
+  });
 }
 
-window.acceptWork = async (workId, postedBy)=>{
-  if(!currentUser){ goLogin(); return; }
-  if(currentUser.uid === postedBy){ alert("You cannot accept your own work"); return; }
-  if(!confirm("Do you want to accept this work?")) return;
+// Haversine formula
+function getDistance(lat1,lng1,lat2,lng2){
+  if(!lat1 || !lat2) return 0;
+  const R = 6371;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLng = (lng2-lng1)*Math.PI/180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// 🔹 Real-time subscription
+async function subscribeToPosts(){
+  const postsCol = collection(db,"posts");
+  onSnapshot(postsCol, async snapshot => {
+    allWorks = [];
+    for(const d of snapshot.docs){
+      const w = {id:d.id, ...d.data()};
+      // Fetch sender name
+      if(w.postedBy){
+        try{
+          const userSnap = await getDoc(doc(db,"users",w.postedBy));
+          w.senderName = userSnap.exists() ? (userSnap.data().name || "Unknown") : "Unknown";
+        } catch(e){ w.senderName = "Unknown"; }
+      } else w.senderName = "Unknown";
+
+      if(!w.likes) w.likes = [];
+      if(!w.comments) w.comments = [];
+      allWorks.push(w);
+    }
+    renderWorks();
+  });
+}
+
+// 🔹 Make functions global
+window.acceptWork = async function(workId){
+  const work = allWorks.find(w=>w.id===workId);
+  if(!work) return;
+  if(work.postedBy === currentUser.uid) return alert("Cannot accept your own post");
 
   try{
-    await updateDoc(doc(db,"works",workId),{ status:"accepted", acceptedBy:currentUser.uid });
-    alert("Work accepted successfully");
-    loadOpenWorks();
-  } catch(err){ console.error(err); alert("Failed to accept work"); }
+    await updateDoc(doc(db,"posts",workId),{
+      acceptedBy: currentUser.uid,
+      status: "accepted"
+    });
+  }catch(e){ alert("❌ "+e.message); }
 };
 
-window.goLogin = ()=>{ window.location.href="login.html"; };
+window.toggleComments = function(workId){
+  const sec = document.getElementById("comments-"+workId);
+  if(sec) sec.style.display = sec.style.display==="none"?"block":"none";
+};
+
+window.addComment = async function(workId, input){
+  const text = input.value.trim();
+  if(!text) return;
+  try{
+    await updateDoc(doc(db,"posts",workId),{
+      comments: arrayUnion({userId:currentUser.uid, text})
+    });
+    input.value="";
+  }catch(e){ alert("Failed: "+e.message); }
+};
+
+window.toggleLike = async function(workId){
+  const work = allWorks.find(w=>w.id===workId);
+  if(!work) return;
+  const liked = work.likes.includes(currentUser.uid);
+  try{
+    await updateDoc(doc(db,"posts",workId),{
+      likes: liked ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid)
+    });
+  }catch(e){ alert("Failed to like/unlike"); }
+};
+
+function renderWorks(){
+  worksContainer.innerHTML="";
+  let limit = distanceFilter.value;
+  let cat = categoryFilter.value;
+  let found = 0;
+
+  for(const w of allWorks){
+    if(w.status !== "open") continue;
+    if(cat !== "all" && w.category !== cat) continue;
+
+    let distText = "N/A";
+    if(userLat && w.location?.lat){
+      let dist = getDistance(userLat,userLng,w.location.lat,w.location.lng);
+      distText = dist<1 ? Math.round(dist*1000)+" m" : dist.toFixed(2)+" km";
+      if(limit!=="all" && dist>Number(limit)) continue;
+    }
+
+    const isSelfPost = w.postedBy === currentUser.uid;
+
+    found++;
+    worksContainer.innerHTML += `
+      <div class="work-card">
+        <p><b>Category:</b> ${w.category}</p>
+        <p><b>Description:</b> ${w.description}</p>
+        <p>${w.category==="ride"?`From: ${w.from} → To: ${w.to} | Seats: ${w.seats}`:
+            w.category==="work"?`Amount: ₹${w.amount}`:
+            w.category==="idea"?`Type: ${w.ideaType}`:
+            w.category==="problem"?`Type: ${w.problemType}`:""}</p>
+        <p><b>Status:</b> <span class="status-badge status-open">${w.status}</span></p>
+        <p><b>Sender:</b> ${w.senderName}</p>
+        <p><b>Distance:</b> ${distText}</p>
+        <button onclick="acceptWork('${w.id}')" ${isSelfPost?"disabled":""}>Accept Work</button>
+        <button onclick="toggleLike('${w.id}')">❤️ ${w.likes.length}</button>
+        <button onclick="toggleComments('${w.id}')">💬 ${w.comments.length}</button>
+        <div class="comment-section" id="comments-${w.id}">
+          ${w.comments.map(c=>`<div class="comment-item">${c.text}</div>`).join("")}
+          <div class="comment-box">
+            <input type="text" placeholder="Add comment">
+            <button onclick="addComment('${w.id}', this.previousElementSibling)">Add</button>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  if(!found){
+    worksContainer.innerHTML='<div class="empty">No works found</div>';
+  }
+}
+</script>
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("service-worker.js")
+    .then(() => console.log("✅ PWA Service Worker Registered"))
+    .catch(err => console.log("❌ SW Error", err));
+}
 </script>
 
-<footer>&copy; 2025 HarVyakti. All rights reserved.</footer>
+
 </body>
 </html>

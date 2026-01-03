@@ -14,28 +14,55 @@ nav a { color:white; text-decoration:none; margin-left:25px; font-weight:600; }
 main { flex:1; padding:100px 20px 20px; text-align:center; }
 footer { background-color:#1c1c1c; color:white; text-align:center; padding:15px 0; margin-top:auto; }
 h2{text-align:center}
-.work-card{background:#fff; padding:15px; margin-bottom:15px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.1);}
-.status{font-weight:bold; color:green;}
-button{padding:8px 12px; background:#1976d2; color:#fff; border:none; border-radius:5px; cursor:pointer; margin-top:10px;}
-button:disabled{background:#aaa;}
-.empty{text-align:center; color:#666; margin-top:40px;}
-.status-badge{
-  padding:4px 8px;
-  border-radius:4px;
-  font-weight:600;
-  color:#fff;
-}
+.work-card{background:#fff; padding:15px; margin-bottom:15px; border-radius:8px; box-shadow:0 2px 6px rgba(0,0,0,.1); max-width:700px; margin-left:auto; margin-right:auto;}
+.status-badge{padding:4px 8px;border-radius:4px;font-weight:600;color:#fff;}
 .status-open{ background:#1976d2; }
 .status-accepted{ background:#f57c00; }
 .status-completed{ background:#2e7d32; }
 
-.rating-box{
+button{padding:8px 12px; background:#1976d2; color:#fff; border:none; border-radius:5px; cursor:pointer; margin-top:10px;}
+button:disabled{background:#aaa;}
+.empty{text-align:center; color:#666; margin-top:40px;}
+
+.rating-box{margin-top:10px;}
+.rating-box select{padding:6px;width:100%;}
+.detail-field{margin:4px 0;}
+
+/* Chat styles */
+.chat-section{
+  border-top:1px solid #ccc;
+  padding-top:10px;
   margin-top:10px;
 }
-.rating-box select{
-  padding:6px;
+.chat-messages{
+  max-height:250px;
+  overflow-y:auto;
+  padding:5px;
+  border-radius:5px;
+  background:#f1f1f1;
 }
-
+.chat-message{
+  margin-bottom:5px;
+  padding:8px 10px;
+  border-radius:15px;
+  max-width:70%;
+  word-wrap:break-word;
+  clear:both;
+}
+.chat-message.right{
+  background:#4caf50;
+  color:white;
+  margin-left:auto;
+  text-align:right;
+}
+.chat-message.left{
+  background:#e0e0e0;
+  color:black;
+  margin-right:auto;
+  text-align:left;
+}
+.chat-box{display:flex; gap:5px; margin-top:5px;}
+.chat-box input{flex:1; padding:5px; border-radius:4px; border:1px solid #ccc;}
 </style>
 </head>
 
@@ -52,10 +79,11 @@ button:disabled{background:#aaa;}
 
 <h2>My Works</h2>
 <div id="worksContainer"></div>
+
 <script type="module">
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc, getDoc, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const worksContainer = document.getElementById("worksContainer");
 let currentUser = null;
@@ -70,7 +98,7 @@ async function loadMyWorks(){
   worksContainer.innerHTML = "Loading...";
   try {
     const q = query(
-      collection(db,"works"),
+      collection(db,"posts"),
       where("postedBy","==",currentUser.uid),
       orderBy("createdAt","desc")
     );
@@ -87,79 +115,86 @@ async function loadMyWorks(){
       const div = document.createElement("div");
       div.className = "work-card";
 
-      let buttonHtml = "";
+      // CATEGORY DETAILS
+      let categoryDetails = "";
+      if(w.category==="ride") categoryDetails = `
+        <div class="detail-field"><b>From:</b> ${w.from}</div>
+        <div class="detail-field"><b>To:</b> ${w.to}</div>
+        <div class="detail-field"><b>Seats:</b> ${w.seats}</div>`;
+      if(w.category==="work") categoryDetails = `
+        <div class="detail-field"><b>Amount:</b> ₹${w.amount}</div>`;
+      if(w.category==="idea") categoryDetails = `
+        <div class="detail-field"><b>Idea Type:</b> ${w.ideaType}</div>`;
+      if(w.category==="problem") categoryDetails = `
+        <div class="detail-field"><b>Problem Type:</b> ${w.problemType}</div>`;
+
+      // CREATED DATE
+      let createdAt = w.createdAt ? new Date(w.createdAt.seconds*1000).toLocaleString() : "N/A";
+
+      // ACCEPTED INFO + CHAT
       let acceptedHtml = "";
+      if(w.status==="accepted"){
+        let accepterName="Unknown", requesterName="Unknown";
+        try{
+          if(w.acceptedBy){
+            const u = await getDoc(doc(db,"users",w.acceptedBy));
+            if(u.exists()) accepterName = u.data().name || "Unknown";
+          }
+          if(w.postedBy){
+            const u2 = await getDoc(doc(db,"users",w.postedBy));
+            if(u2.exists()) requesterName = u2.data().name || "Unknown";
+          }
+        }catch(e){ console.error(e); }
 
-      /* ---------- ACCEPTED STATUS ---------- */
-      if(w.status === "accepted"){
-        let accepterInfo = { name:"Unknown", mobile:"" };
-
-        if(w.acceptedBy){
-          try{
-            const userSnap = await getDoc(doc(db,"users",w.acceptedBy));
-            if(userSnap.exists()){
-              const data = userSnap.data();
-              accepterInfo.name = data.name || "Unknown";
-              accepterInfo.mobile = data.mobile || "";
-            }
-          }catch(e){ console.error(e); }
-        }
-
-        acceptedHtml = `
-          <p><b>Accepted By:</b> ${accepterInfo.name}</p>
-          <p><b>Mobile:</b> ${accepterInfo.mobile}
-            <a href="tel:${accepterInfo.mobile}">
-              <button>Call</button>
-            </a>
-          </p>
-
-          <div class="rating-box">
-            <label><b>Give Rating:</b></label>
-            <select id="rating-${d.id}">
-              <option value="">Select</option>
-              <option value="1">⭐ 1</option>
-              <option value="2">⭐⭐ 2</option>
-              <option value="3">⭐⭐⭐ 3</option>
-              <option value="4">⭐⭐⭐⭐ 4</option>
-              <option value="5">⭐⭐⭐⭐⭐ 5</option>
-            </select>
-          </div>
-        `;
-
-        buttonHtml = `<button onclick="markCompleted('${d.id}')">Mark as Completed</button>`;
+        acceptedHtml = `<div class="detail-field"><b>Accepted By:</b> ${accepterName}</div>
+                        <div class="rating-box">
+                          <label><b>Give Rating:</b></label>
+                          <select id="rating-${d.id}">
+                            <option value="">Select</option>
+                            <option value="1">⭐ 1</option>
+                            <option value="2">⭐⭐ 2</option>
+                            <option value="3">⭐⭐⭐ 3</option>
+                            <option value="4">⭐⭐⭐⭐ 4</option>
+                            <option value="5">⭐⭐⭐⭐⭐ 5</option>
+                          </select>
+                        </div>
+                        <button onclick="markCompleted('${d.id}')">Mark as Completed</button>
+                        <div class="chat-section" id="chat-${d.id}">
+                          <div class="chat-messages" id="chat-messages-${d.id}"></div>
+                          <div class="chat-box">
+                            <input type="text" placeholder="Type message...">
+                            <button onclick="sendChat('${d.id}', this.previousElementSibling, '${currentUser.uid}', '${accepterName}', '${requesterName}', '${w.postedBy}')">Send</button>
+                          </div>
+                        </div>`;
       }
 
-      /* ---------- COMPLETED STATUS ---------- */
-      if(w.status === "completed"){
-        acceptedHtml = `
-          <p><b>Accepted By:</b> ${w.acceptedByName || "Worker"}</p>
-          <p><b>Rating Given:</b> ${w.rating || "N/A"} ⭐</p>
-          <p style="color:#2e7d32;"><b>Mobile hidden after completion</b></p>
-        `;
+      if(w.status==="completed"){
+        acceptedHtml = `<div class="detail-field"><b>Accepted By:</b> ${w.acceptedByName || "Worker"}</div>
+                        <div class="detail-field"><b>Rating Given:</b> ${w.rating || "N/A"} ⭐</div>
+                        <p style="color:#2e7d32;"><b>Mobile hidden after completion</b></p>`;
       }
 
-      /* ---------- OPEN STATUS ---------- */
-      if(w.status === "open"){
-        buttonHtml = `<button onclick="deleteWork('${d.id}')">Delete Work</button>`;
-      }
+      // OPEN STATUS (delete only)
+      let buttonHtml = "";
+      if(w.status==="open") buttonHtml = `<button onclick="deleteWork('${d.id}')">Delete Work</button>`;
 
       div.innerHTML = `
         <h3>${w.title}</h3>
-        <p>${w.description}</p>
-        <p><b>Amount:</b> ₹${w.amount}</p>
-
-        <p>
+        <div class="detail-field"><b>Description:</b> ${w.description}</div>
+        <div class="detail-field"><b>Category:</b> ${w.category}</div>
+        ${categoryDetails}
+        <div class="detail-field"><b>Created At:</b> ${createdAt}</div>
+        <div class="detail-field">
           <b>Status:</b>
-          <span class="status-badge status-${w.status}">
-            ${w.status}
-          </span>
-        </p>
-
+          <span class="status-badge status-${w.status}">${w.status}</span>
+        </div>
         ${acceptedHtml}
         ${buttonHtml}
       `;
 
       worksContainer.appendChild(div);
+
+      if(w.status==="accepted") subscribeToChat(d.id, currentUser.uid, w.postedBy);
     }
   } catch(err){
     console.error(err);
@@ -167,43 +202,62 @@ async function loadMyWorks(){
   }
 }
 
-
+// Mark as completed
 window.markCompleted = async (workId)=>{
   const ratingSelect = document.getElementById(`rating-${workId}`);
   const rating = ratingSelect?.value;
-
-  if(!rating){
-    alert("Please give rating before completing work");
-    return;
-  }
-
+  if(!rating){ alert("Please give rating before completing work"); return; }
   if(!confirm("Mark this work as completed?")) return;
-
   try{
-    await updateDoc(doc(db,"works",workId), {
-      status:"completed",
-      rating: Number(rating)
-    });
-
+    await updateDoc(doc(db,"posts",workId), { status:"completed", rating:Number(rating) });
     alert("Work completed & rating saved!");
     loadMyWorks();
-  }catch(e){
-    alert("Failed: " + e.message);
-  }
+  }catch(e){ alert("Failed: "+e.message); }
 };
 
-
+// Delete work
 window.deleteWork = async (workId)=>{
   if(!confirm("Are you sure you want to delete this work?")) return;
   try{
-    await deleteDoc(doc(db,"works",workId));
+    await deleteDoc(doc(db,"posts",workId));
     alert("Work deleted!");
     loadMyWorks();
-  } catch(e){ alert("Failed: "+e.message); }
+  }catch(e){ alert("Failed: "+e.message); }
 };
+
+// Chat send
+window.sendChat = async (workId,input, senderId, accepterName, requesterName, postedBy)=>{
+  const text = input.value.trim();
+  if(!text) return;
+  try{
+    await updateDoc(doc(db,"posts",workId),{
+      chats: arrayUnion({
+        senderId,
+        text,
+        timestamp: Date.now()
+      })
+    });
+    input.value="";
+  }catch(e){ alert("Failed: "+e.message); }
+}
+
+// Chat real-time listener
+function subscribeToChat(workId, currentUserId, requesterId){
+  const chatDiv = document.getElementById("chat-messages-"+workId);
+  if(!chatDiv) return;
+  const chatRef = doc(db,"posts",workId);
+  onSnapshot(chatRef, snap=>{
+    const data = snap.data();
+    if(!data.chats) data.chats=[];
+    chatDiv.innerHTML = data.chats.map(c=>{
+      const cls = c.senderId === currentUserId ? "right" : "left";
+      const name = c.senderId === currentUserId ? "You" : "Requester";
+      return `<div class="chat-message ${cls}"><b>${name}:</b> ${c.text}</div>`;
+    }).join("");
+    chatDiv.scrollTop = chatDiv.scrollHeight;
+  });
+}
 </script>
-
-
 
 <footer>&copy; 2025 HarVyakti. All rights reserved.</footer>
 </body>

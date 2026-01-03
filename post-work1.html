@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Post Work</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{font-family:Arial;background:#f4f4f4;margin:0;}
+.container{max-width:500px;margin:20px auto;background:#fff;padding:15px;border-radius:8px;}
+h2{text-align:center;}
+select,input,textarea,button{
+  width:100%;padding:10px;margin:8px 0;
+  border-radius:5px;border:1px solid #ccc;
+}
+.extra{display:none;}
+button{background:#2196f3;color:#fff;border:none;font-size:16px;}
+#previewBox{display:none;margin-top:15px;padding:10px;background:#eef6ff;border-radius:5px;}
+#locationText{font-size:14px;color:#555;}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+  <h2>Create Post</h2>
+
+  <select id="category" onchange="changeCategory()">
+    <option value="">Select Category</option>
+    <option value="ride">Ride</option>
+    <option value="work">Work</option>
+    <option value="idea">Idea</option>
+    <option value="problem">Problem</option>
+  </select>
+
+  <textarea id="desc" placeholder="Write details..."></textarea>
+
+  <div id="ride" class="extra">
+    <input id="from" placeholder="From">
+    <input id="to" placeholder="To">
+    <input id="seats" type="number" placeholder="Available Seats">
+  </div>
+
+  <div id="work" class="extra">
+    <input id="workPrice" type="number" placeholder="Expected Amount">
+  </div>
+
+  <div id="idea" class="extra">
+    <select id="ideaType">
+      <option value="Startup">Startup</option>
+      <option value="Local">Local</option>
+      <option value="Tech">Tech</option>
+    </select>
+  </div>
+
+  <div id="problem" class="extra">
+    <select id="problemType">
+      <option value="Society">Society</option>
+      <option value="Village">Village</option>
+      <option value="Road">Road</option>
+    </select>
+  </div>
+
+  <p id="locationText">📍 Detecting location...</p>
+
+  <button onclick="previewPost()">Preview</button>
+  <button onclick="savePost()">Post</button>
+
+  <div id="previewBox"></div>
+</div>
+
+<script type="module">
+import { auth, db } from "./firebase.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+let userLocation = null;
+
+/* 🔐 Auth check */
+onAuthStateChanged(auth,user=>{
+  if(!user){
+    alert("Please login first");
+    location.href="login.html";
+  }
+});
+
+/* 🔹 Category toggle */
+window.changeCategory = function(){
+  document.querySelectorAll(".extra").forEach(e=>e.style.display="none");
+  if(category.value) document.getElementById(category.value).style.display="block";
+};
+
+/* 📍 Location */
+if("geolocation" in navigator){
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      userLocation={lat:pos.coords.latitude,lng:pos.coords.longitude};
+      locationText.innerText=`📍 Location detected (${userLocation.lat.toFixed(4)}, ${userLocation.lng.toFixed(4)})`;
+    },
+    ()=>locationText.innerText="📍 Location unavailable"
+  );
+}
+
+/* 👁 Preview */
+window.previewPost = function(){
+  let html=`<b>${category.value.toUpperCase()}</b><br><br>${desc.value}<br><br>`;
+  if(category.value==="ride"){
+    html+=`🚏 From: ${from.value}<br>🏁 To: ${to.value}<br>💺 Seats: ${seats.value}<br><br>`;
+  }
+  if(category.value==="work") html+=`💰 Amount: ₹${workPrice.value}<br><br>`;
+  if(category.value==="idea") html+=`💡 Type: ${ideaType.value}<br><br>`;
+  if(category.value==="problem") html+=`⚠️ Type: ${problemType.value}<br><br>`;
+  html+="📍 Auto location";
+  previewBox.innerHTML=html;
+  previewBox.style.display="block";
+};
+
+/* 💾 Save */
+window.savePost = async function(){
+  if(!category.value || !desc.value){
+    alert("Category & description required");
+    return;
+  }
+
+  const data={
+    category:category.value,
+    description:desc.value,
+    location:userLocation,
+     status: "open", 
+    postedBy:auth.currentUser.uid,
+    createdAt:serverTimestamp()
+  };
+
+  if(category.value==="ride"){
+    data.from=from.value;
+    data.to=to.value;
+    data.seats=Number(seats.value||0);
+  }
+  if(category.value==="work") data.amount=Number(workPrice.value||0);
+  if(category.value==="idea") data.ideaType=ideaType.value;
+  if(category.value==="problem") data.problemType=problemType.value;
+
+  try{
+    await addDoc(collection(db,"posts"),data);
+    alert("✅ Post saved");
+    location.reload();
+  }catch(e){
+    alert("❌ Error saving post");
+  }
+};
+</script>
+
+</body>
+</html>
