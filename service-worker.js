@@ -1,34 +1,46 @@
-const CACHE_NAME = "harvyakti-v1";
-
-const FILES_TO_CACHE = [
-  "/",
+const CACHE_NAME = "harvyakti-cache-v1";
+const urlsToCache = [
   "/index.html",
   "/dashboard.html",
-  "/login.html",
+  "/profile1.html",
+  "/post-work1.html",
+  "/nearby-users.html",
+  "/my-works.html",
+  "/accepted-work.html",
+  "/ideas.html",
+  "/styles.css",
   "/firebase.js",
-  "/manifest.json"
+  "/icons/icon-192.png",
+  "/icons/icon-512.png"
 ];
 
-// install
-self.addEventListener('install', () => {
+// Install SW and cache files
+self.addEventListener("install", event => {
+  event.waitUntil(
+    caches.open(CACHE_NAME).then(cache => {
+      return cache.addAll(urlsToCache);
+    })
+  );
   self.skipWaiting();
 });
 
-self.addEventListener('fetch', event => {
-  event.respondWith(fetch(event.request).catch(() =>
-    caches.match(event.request)
-  ));
-});
-
-
-// activate
+// Activate SW
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(k => k !== CACHE_NAME && caches.delete(k)))
-    )
+    caches.keys().then(keys => {
+      return Promise.all(keys
+        .filter(key => key !== CACHE_NAME)
+        .map(key => caches.delete(key))
+      );
+    })
   );
   self.clients.claim();
 });
 
-
+// Fetch: serve cache first, fallback network
+self.addEventListener("fetch", event => {
+  event.respondWith(
+    caches.match(event.request)
+      .then(resp => resp || fetch(event.request))
+  );
+});

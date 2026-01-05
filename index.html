@@ -7,6 +7,7 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4facfe">
 
+
 <style>
 /* ================= Body & Global ================= */
 body {
@@ -374,12 +375,13 @@ function renderWorks(){
 }
 </script>
 <script>
-if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/HarVyakti/service-worker.js')
-    .then(()=>console.log("Service Worker Registered"))
-    .catch(err=>console.error(err));
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/service-worker.js")
+    .then(() => console.log("✅ Service Worker registered"))
+    .catch(err => console.log("❌ SW registration failed", err));
 }
 </script>
+
 
 
 </body>
