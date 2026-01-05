@@ -6,7 +6,61 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
-body{font-family:Arial;background:#f4f4f4;margin:0;}
+body{
+  margin:0;
+  font-family:Arial,sans-serif;
+  background:#f2f4f7;
+  min-height:100vh;
+  display:flex;
+  flex-direction:column;
+}
+
+header{
+  position:fixed;
+  top:0;left:0;
+  width:100%;
+  background:linear-gradient(90deg,#4facfe,#00f2fe);
+  box-shadow:0 4px 8px rgba(0,0,0,.2);
+  z-index:1000;
+}
+.header-container{
+  max-width:1200px;
+  margin:auto;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  padding:15px 20px;
+}
+.logo{font-size:1.8rem;font-weight:bold;color:#fff}
+nav a{
+  color:#fff;
+  text-decoration:none;
+  margin-left:25px;
+  font-weight:600;
+  position:relative;
+}
+nav a::after{
+  content:'';
+  position:absolute;
+  width:0;height:2px;
+  bottom:-3px;left:0;
+  background:#fff;
+  transition:.3s;
+}
+nav a:hover::after{width:100%}
+
+main{
+  flex:1;
+  padding-top:110px; /* header height */
+}
+
+
+footer{
+  background:#1c1c1c;
+  color:#fff;
+  text-align:center;
+  padding:15px 0;
+}
 .container{max-width:500px;margin:20px auto;background:#fff;padding:15px;border-radius:8px;}
 h2{text-align:center;}
 select,input,textarea,button{
@@ -15,13 +69,23 @@ select,input,textarea,button{
 }
 .extra{display:none;}
 button{background:#2196f3;color:#fff;border:none;font-size:16px;}
-#previewBox{display:none;margin-top:15px;padding:10px;background:#eef6ff;border-radius:5px;}
+
 #locationText{font-size:14px;color:#555;}
 </style>
 </head>
 
 <body>
 
+<header>
+  <div class="header-container">
+    <div class="logo">HarVyakti</div>
+    <nav>
+      <a href="index.html">Home</a>
+      <a href="dashboard.html">Dashboard</a>
+    </nav>
+  </div>
+</header>
+<main>
 <div class="container">
   <h2>Create Post</h2>
 
@@ -33,7 +97,7 @@ button{background:#2196f3;color:#fff;border:none;font-size:16px;}
     <option value="problem">Problem</option>
   </select>
 
-  <textarea id="desc" placeholder="Write details..."></textarea>
+  <textarea id="desc" placeholder="Write Your need, earn rewards and money..."></textarea>
 
   <div id="ride" class="extra">
     <input id="from" placeholder="From">
@@ -63,12 +127,12 @@ button{background:#2196f3;color:#fff;border:none;font-size:16px;}
 
   <p id="locationText">📍 Detecting location...</p>
 
-  <button onclick="previewPost()">Preview</button>
+ 
   <button onclick="savePost()">Post</button>
 
-  <div id="previewBox"></div>
 </div>
-
+</main>
+<footer>© 2025 HarVyakti</footer>
 <script type="module">
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -101,19 +165,7 @@ if("geolocation" in navigator){
   );
 }
 
-/* 👁 Preview */
-window.previewPost = function(){
-  let html=`<b>${category.value.toUpperCase()}</b><br><br>${desc.value}<br><br>`;
-  if(category.value==="ride"){
-    html+=`🚏 From: ${from.value}<br>🏁 To: ${to.value}<br>💺 Seats: ${seats.value}<br><br>`;
-  }
-  if(category.value==="work") html+=`💰 Amount: ₹${workPrice.value}<br><br>`;
-  if(category.value==="idea") html+=`💡 Type: ${ideaType.value}<br><br>`;
-  if(category.value==="problem") html+=`⚠️ Type: ${problemType.value}<br><br>`;
-  html+="📍 Auto location";
-  previewBox.innerHTML=html;
-  previewBox.style.display="block";
-};
+
 
 /* 💾 Save */
 window.savePost = async function(){

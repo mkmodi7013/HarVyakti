@@ -15,6 +15,8 @@ body{
   flex-direction:column;
   padding-top:110px;
 }
+
+/* Header */
 header{
   position:fixed;
   top:0;left:0;
@@ -32,22 +34,21 @@ header{
   padding:15px 20px;
 }
 .logo{font-size:1.8rem;font-weight:bold;color:#fff}
-nav a{
+
+/* Desktop nav */
+nav.desktop-nav a{
   color:#fff;
   text-decoration:none;
   margin-left:25px;
   font-weight:600;
   position:relative;
 }
-nav a::after{
-  content:'';
-  position:absolute;
-  width:0;height:2px;
-  bottom:-3px;left:0;
-  background:#fff;
-  transition:.3s;
+nav.desktop-nav a::after{
+  content:'';position:absolute;width:0;height:2px;bottom:-3px;left:0;background:#fff;transition:.3s;
 }
-nav a:hover::after{width:100%}
+nav.desktop-nav a:hover::after{width:100%;}
+
+/* User info */
 #userInfo{display:flex;align-items:center;gap:10px}
 #userEmail{color:#fff;font-weight:bold}
 #logoutBtn{
@@ -58,6 +59,74 @@ nav a:hover::after{width:100%}
   color:#fff;
   cursor:pointer;
 }
+
+/* Hamburger */
+.hamburger{
+  display:none;
+  flex-direction:column;
+  justify-content:space-between;
+  width:28px;
+  height:20px;
+  cursor:pointer;
+}
+.hamburger div{
+  height:3px;
+  background:#fff;
+  border-radius:2px;
+  transition:0.3s;
+}
+.hamburger.active div:nth-child(1){transform:rotate(45deg) translate(5px,5px);}
+.hamburger.active div:nth-child(2){opacity:0;}
+.hamburger.active div:nth-child(3){transform:rotate(-45deg) translate(5px,-5px);}
+
+/* Mobile Menu */
+.mobile-menu{
+  position:fixed;
+  top:0;
+  right:-260px; 
+  width:260px;
+  height:100%;
+  background:#fff;
+  box-shadow:-4px 0 12px rgba(0,0,0,.2);
+  display:flex;
+  flex-direction:column;
+  padding:70px 20px;
+  gap:20px;
+  transition:0.3s;
+  z-index:1050;
+}
+.mobile-menu.active{right:0;}
+.mobile-menu a{color:#1976d2;font-weight:600;text-decoration:none;font-size:16px}
+.mobile-menu a:hover{text-decoration:underline;}
+.mobile-user{
+  margin-top:auto;
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  color:#333;
+}
+.mobile-user button{
+  padding:8px 12px;
+  background:#e53935;
+  color:#fff;
+  border:none;
+  border-radius:4px;
+  cursor:pointer;
+  width:100%;
+  font-size:14px;
+}
+
+/* Overlay */
+.overlay{
+  position:fixed;
+  top:0;left:0;width:100%;height:100%;
+  background:rgba(0,0,0,0.35);
+  opacity:0;pointer-events:none;transition:0.3s;
+  z-index:1040;
+}
+.overlay.active{opacity:1;pointer-events:auto}
+
+/* Main content */
 main{flex:1;padding:20px;text-align:center}
 .welcome{margin:30px 0;font-size:22px;color:#1976d2}
 .cards{
@@ -81,31 +150,67 @@ main{flex:1;padding:20px;text-align:center}
 }
 .card h4{margin-bottom:10px;color:#1976d2}
 .card p{font-size:14px;opacity:.8}
+
+/* Footer */
 footer{
   background:#1c1c1c;
   color:#fff;
   text-align:center;
   padding:15px 0;
 }
+
+/* Responsive */
+@media(max-width:768px){
+  nav.desktop-nav,#userInfo{display:none;}
+  .hamburger{display:flex;}
+}
 </style>
 </head>
 
 <body>
 
+<!-- Header -->
 <header>
   <div class="header-container">
     <div class="logo">HarVyakti</div>
-    <nav>
+
+    <!-- Desktop nav -->
+    <nav class="desktop-nav">
       <a href="index.html">Home</a>
       <a href="profile1.html">My Profile</a>
     </nav>
+
+    <!-- User info -->
     <div id="userInfo">
       <span id="userEmail"></span>
       <button id="logoutBtn">Logout</button>
     </div>
+
+    <!-- Hamburger -->
+    <div class="hamburger" id="hamburger">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
   </div>
 </header>
 
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobileMenu">
+  <a href="index.html">Home</a>
+  <a href="profile1.html">My Profile</a>
+
+  <div class="mobile-user" style="margin-top:auto; display:flex; flex-direction:column; gap:10px;">
+    <span id="mobileEmail" style="color:#333; font-weight:600;"></span>
+    <button id="mobileLogout" style="width:100%;">Logout</button>
+  </div>
+</div>
+
+
+<!-- Overlay -->
+<div class="overlay" id="overlay"></div>
+
+<!-- Main content -->
 <main>
   <div class="welcome">Welcome 👋</div>
 
@@ -118,10 +223,7 @@ footer{
       <h4>Nearby Users</h4>
       <p>See active people around you</p>
     </a>
-    <a href="ideas.html" class="card">
-      <h4>Share Ideas</h4>
-      <p>Earn respect & rewards</p>
-    </a>
+   
     <a href="my-works.html" class="card">
       <h4>My Works</h4>
       <p>Track your posted work</p>
@@ -133,28 +235,41 @@ footer{
   </div>
 </main>
 
+<!-- Firebase + Menu script -->
 <script type="module">
 import { auth } from "./firebase.js";
-import { onAuthStateChanged, signOut } from
-  "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 const userEmail = document.getElementById("userEmail");
+const mobileEmail = document.getElementById("mobileEmail");
 const logoutBtn = document.getElementById("logoutBtn");
+const mobileLogout = document.getElementById("mobileLogout");
 
-/* Auth Guard */
+const hamburger = document.getElementById("hamburger");
+const mobileMenu = document.getElementById("mobileMenu");
+const overlay = document.getElementById("overlay");
+
+/* Auth check */
 onAuthStateChanged(auth,user=>{
-  if(!user){
-    location.href="login.html";
-    return;
-  }
+  if(!user){ location.href="login.html"; return; }
   userEmail.textContent = user.email;
+  mobileEmail.textContent = user.email;
 });
 
 /* Logout */
-logoutBtn.onclick = async ()=>{
+logoutBtn.onclick = mobileLogout.onclick = async ()=>{
   await signOut(auth);
   location.href="index.html";
 };
+
+/* Hamburger toggle */
+function toggleMenu(){
+  hamburger.classList.toggle("active");
+  mobileMenu.classList.toggle("active");
+  overlay.classList.toggle("active");
+}
+hamburger.addEventListener("click",toggleMenu);
+overlay.addEventListener("click",toggleMenu);
 </script>
 
 <footer>
