@@ -217,6 +217,8 @@ footer {
 <footer>© 2025 HarVyakti</footer>
 
 <script type="module">
+  let lastRenderHash = "";
+
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { collection, getDocs, doc, getDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
@@ -262,22 +264,23 @@ function getDistance(lat1,lng1,lat2,lng2){
 async function subscribeToPosts(){
   const postsCol = collection(db,"posts");
   onSnapshot(postsCol, async snapshot => {
-    allWorks = [];
-    for(const d of snapshot.docs){
-      const w = {id:d.id, ...d.data()};
-      if(w.postedBy){
-        try{
-          const userSnap = await getDoc(doc(db,"users",w.postedBy));
-          w.senderName = userSnap.exists() ? (userSnap.data().name || "Unknown") : "Unknown";
-        } catch(e){ w.senderName = "Unknown"; }
-      } else w.senderName = "Unknown";
+  allWorks = [];
+  for(const d of snapshot.docs){
+    const w = {id:d.id, ...d.data()};
+    if(w.postedBy){
+      try{
+        const userSnap = await getDoc(doc(db,"users",w.postedBy));
+        w.senderName = userSnap.exists() ? (userSnap.data().name || "Unknown") : "Unknown";
+      } catch(e){ w.senderName = "Unknown"; }
+    } else w.senderName = "Unknown";
 
-      if(!w.likes) w.likes = [];
-      if(!w.comments) w.comments = [];
-      allWorks.push(w);
-    }
-    renderWorks();
-  });
+    if(!w.likes) w.likes = [];
+    if(!w.comments) w.comments = [];
+    allWorks.push(w);
+  }
+  renderWorks(true); // force rerender only when snapshot changes
+});
+
 }
 
 // 🔹 Make functions global
@@ -321,8 +324,19 @@ window.toggleLike = async function(workId){
   }catch(e){ alert("Failed to like/unlike"); }
 };
 
-function renderWorks(){
-  worksContainer.innerHTML="";
+function renderWorks(force=false){
+  // Compute hash of current visible works
+  const hash = JSON.stringify(allWorks.map(w => ({
+    id: w.id,
+    likes: w.likes.length,
+    comments: w.comments.length,
+    status: w.status
+  })));
+
+  if(!force && hash === lastRenderHash) return; // no change, skip rerender
+  lastRenderHash = hash;
+
+  worksContainer.innerHTML = "";
   let limit = distanceFilter.value;
   let cat = categoryFilter.value;
   let found = 0;
@@ -339,8 +353,8 @@ function renderWorks(){
     }
 
     const isSelfPost = w.postedBy === currentUser.uid;
-
     found++;
+
     worksContainer.innerHTML += `
       <div class="work-card">
         <p><b>Category:</b> ${w.category}</p>
@@ -353,10 +367,8 @@ function renderWorks(){
         <p><b>Sender:</b> ${w.senderName}</p>
         <p><b>Distance:</b> ${distText}</p>
         ${w.category !== "idea" ? 
-  `<button onclick="acceptWork('${w.id}')" ${isSelfPost?"disabled":""}>Accept Work</button>` 
-  : ""
-}
-
+          `<button onclick="acceptWork('${w.id}')" ${isSelfPost?"disabled":""}>Accept Work</button>` 
+          : ""}
         <button onclick="toggleLike('${w.id}')">❤️ ${w.likes.length}</button>
         <button onclick="toggleComments('${w.id}')">💬 ${w.comments.length}</button>
         <div class="comment-section" id="comments-${w.id}">
@@ -373,6 +385,7 @@ function renderWorks(){
     worksContainer.innerHTML='<div class="empty">No works found</div>';
   }
 }
+
 </script>
 <script>
 if ("serviceWorker" in navigator) {
