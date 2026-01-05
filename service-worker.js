@@ -10,12 +10,16 @@ const FILES_TO_CACHE = [
 ];
 
 // install
-self.addEventListener("install", event => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(FILES_TO_CACHE))
-  );
+self.addEventListener('install', () => {
   self.skipWaiting();
 });
+
+self.addEventListener('fetch', event => {
+  event.respondWith(fetch(event.request).catch(() =>
+    caches.match(event.request)
+  ));
+});
+
 
 // activate
 self.addEventListener("activate", event => {
@@ -27,9 +31,4 @@ self.addEventListener("activate", event => {
   self.clients.claim();
 });
 
-// fetch
-self.addEventListener("fetch", event => {
-  event.respondWith(
-    caches.match(event.request).then(res => res || fetch(event.request))
-  );
-});
+
