@@ -236,6 +236,7 @@ document.getElementById("saveBtn").onclick=async()=>{
       address:addressInput.value.trim(),
       roles:selectedRoles,
       location:userLocation,
+        profileComplete:true,
       updatedAt:Date.now()
     },{merge:true});
     msg.innerText="✅ Profile updated";

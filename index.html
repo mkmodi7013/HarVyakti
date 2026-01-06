@@ -221,7 +221,7 @@ footer {
 
 
 <footer>© 2025 HarVyakti</footer>
-
+<!-- Only JS part is modified, rest of HTML/CSS untouched -->
 <script type="module">
   let lastRenderHash = "";
 
@@ -237,10 +237,9 @@ let userLat = null, userLng = null;
 let allWorks = [];
 let currentUser = null;
 
-// 🔐 Auth check
+// 🔐 Auth check (optional login)
 onAuthStateChanged(auth, async user => {
-  if(!user){ location.href="login.html"; return; }
-  currentUser = user;
+  currentUser = user || null; // if not logged in, currentUser = null
   getUserLocation();
   await subscribeToPosts();
 });
@@ -270,27 +269,31 @@ function getDistance(lat1,lng1,lat2,lng2){
 async function subscribeToPosts(){
   const postsCol = collection(db,"posts");
   onSnapshot(postsCol, async snapshot => {
-  allWorks = [];
-  for(const d of snapshot.docs){
-    const w = {id:d.id, ...d.data()};
-    if(w.postedBy){
-      try{
-        const userSnap = await getDoc(doc(db,"users",w.postedBy));
-        w.senderName = userSnap.exists() ? (userSnap.data().name || "Unknown") : "Unknown";
-      } catch(e){ w.senderName = "Unknown"; }
-    } else w.senderName = "Unknown";
+    allWorks = [];
+    for(const d of snapshot.docs){
+      const w = {id:d.id, ...d.data()};
+      if(w.postedBy){
+        try{
+          const userSnap = await getDoc(doc(db,"users",w.postedBy));
+          w.senderName = userSnap.exists() ? (userSnap.data().name || "Unknown") : "Unknown";
+        } catch(e){ w.senderName = "Unknown"; }
+      } else w.senderName = "Unknown";
 
-    if(!w.likes) w.likes = [];
-    if(!w.comments) w.comments = [];
-    allWorks.push(w);
-  }
-  renderWorks(true); // force rerender only when snapshot changes
-});
-
+      if(!w.likes) w.likes = [];
+      if(!w.comments) w.comments = [];
+      allWorks.push(w);
+    }
+    renderWorks(true);
+  });
 }
 
-// 🔹 Make functions global
+// 🔹 Make functions global with login check
 window.acceptWork = async function(workId){
+  if(!currentUser){ 
+    alert("Please login to accept work");
+    location.href = "login.html";
+    return;
+  }
   const work = allWorks.find(w=>w.id===workId);
   if(!work) return;
   if(work.postedBy === currentUser.uid) return alert("Cannot accept your own post");
@@ -309,6 +312,11 @@ window.toggleComments = function(workId){
 };
 
 window.addComment = async function(workId, input){
+  if(!currentUser){
+    alert("Please login to comment");
+    location.href = "login.html";
+    return;
+  }
   const text = input.value.trim();
   if(!text) return;
   try{
@@ -320,6 +328,11 @@ window.addComment = async function(workId, input){
 };
 
 window.toggleLike = async function(workId){
+  if(!currentUser){
+    alert("Please login to like");
+    location.href = "login.html";
+    return;
+  }
   const work = allWorks.find(w=>w.id===workId);
   if(!work) return;
   const liked = work.likes.includes(currentUser.uid);
@@ -331,7 +344,6 @@ window.toggleLike = async function(workId){
 };
 
 function renderWorks(force=false){
-  // Compute hash of current visible works
   const hash = JSON.stringify(allWorks.map(w => ({
     id: w.id,
     likes: w.likes.length,
@@ -339,7 +351,7 @@ function renderWorks(force=false){
     status: w.status
   })));
 
-  if(!force && hash === lastRenderHash) return; // no change, skip rerender
+  if(!force && hash === lastRenderHash) return;
   lastRenderHash = hash;
 
   worksContainer.innerHTML = "";
@@ -358,7 +370,7 @@ function renderWorks(force=false){
       if(limit!=="all" && dist>Number(limit)) continue;
     }
 
-    const isSelfPost = w.postedBy === currentUser.uid;
+    const isSelfPost = currentUser && w.postedBy === currentUser.uid;
     found++;
 
     worksContainer.innerHTML += `
@@ -391,29 +403,25 @@ function renderWorks(force=false){
     worksContainer.innerHTML='<div class="empty">No works found</div>';
   }
 }
-// PWA install prompt handling
+
+// PWA install prompt handling (unchanged)
 let deferredPrompt;
 window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault(); // Prevent the default mini-infobar
-    deferredPrompt = e;  // Save the event for later
-    document.getElementById('installBtn').style.display = 'block'; // Show custom install button
+    e.preventDefault();
+    deferredPrompt = e;
+    document.getElementById('installBtn').style.display = 'block';
 });
 
 document.getElementById('installBtn').addEventListener('click', async () => {
     if(deferredPrompt){
-        deferredPrompt.prompt(); // Show install prompt
+        deferredPrompt.prompt();
         const { outcome } = await deferredPrompt.userChoice;
-        if(outcome === 'accepted'){
-            console.log('User accepted the install prompt');
-        } else {
-            console.log('User dismissed the install prompt');
-        }
         deferredPrompt = null;
-        document.getElementById('installBtn').style.display = 'none'; // Hide button after click
+        document.getElementById('installBtn').style.display = 'none';
     }
 });
-
 </script>
+
 <script>
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/service-worker.js")
