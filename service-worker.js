@@ -6,9 +6,7 @@ const urlsToCache = [
   "/post-work1.html",
   "/nearby-users.html",
   "/my-works.html",
-  "/accepted-work.html",
-  "/ideas.html",
-  "/styles.css",
+  "/accepted-work.html", 
   "/firebase.js",
   "/icons/icon-192.png",
   "/icons/icon-512.png"
@@ -43,4 +41,14 @@ self.addEventListener("fetch", event => {
     caches.match(event.request)
       .then(resp => resp || fetch(event.request))
   );
+});
+self.addEventListener("push", event => {
+  const data = event.data.json();
+
+  self.registration.showNotification(data.title, {
+    body: data.body,
+    icon: "/icons/icon-192.png",
+    vibrate: [200, 100, 200, 100, 300],
+    requireInteraction: true
+  });
 });

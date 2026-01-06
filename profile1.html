@@ -107,8 +107,8 @@ button{
   <div class="header-container">
     <div class="logo">HarVyakti</div>
     <nav>
-      <a href="dashboard.html">Dashboard</a>
-      <a href="index.html">Home</a>
+      
+     
     </nav>
   </div>
 </header>
@@ -239,6 +239,7 @@ document.getElementById("saveBtn").onclick=async()=>{
       updatedAt:Date.now()
     },{merge:true});
     msg.innerText="✅ Profile updated";
+     window.location.href = "dashboard.html";
   }catch(e){
     msg.innerText="❌ "+e.message;
   }

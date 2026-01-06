@@ -92,6 +92,16 @@ nav.desktop-nav a:hover::after{width:100%;}
 .mobile-menu.active{right:0;}
 .mobile-menu a{color:#1976d2;font-weight:600;text-decoration:none}
 
+/* Mobile logout button style */
+#mobileLogout{
+  padding:6px 12px;
+  border:none;
+  border-radius:5px;
+  background:#e53935;
+  color:#fff;
+  cursor:pointer;
+}
+
 .mobile-user{
   margin-top:auto;
   display:flex;
@@ -192,72 +202,44 @@ footer{
 
 <footer>© 2025 HarVyakti</footer>
 
-<!-- ================= SCRIPT ================= -->
 <script type="module">
-import { auth, db } from "./firebase.js";
-import { onAuthStateChanged, signOut } from
-  "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getMessaging, getToken } from
-  "https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
-import { doc, updateDoc } from
-  "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { auth } from "./firebase.js";
+import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
-const userEmail = document.getElementById("userEmail");
-const mobileEmail = document.getElementById("mobileEmail");
-const logoutBtn = document.getElementById("logoutBtn");
-const mobileLogout = document.getElementById("mobileLogout");
+document.addEventListener("DOMContentLoaded", () => {
+  const userEmail = document.getElementById("userEmail");
+  const mobileEmail = document.getElementById("mobileEmail");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const mobileLogout = document.getElementById("mobileLogout");
 
-const hamburger = document.getElementById("hamburger");
-const mobileMenu = document.getElementById("mobileMenu");
-const overlay = document.getElementById("overlay");
+  const hamburger = document.getElementById("hamburger");
+  const mobileMenu = document.getElementById("mobileMenu");
+  const overlay = document.getElementById("overlay");
 
-/* Menu */
-const toggleMenu = ()=>{
-  hamburger.classList.toggle("active");
-  mobileMenu.classList.toggle("active");
-  overlay.classList.toggle("active");
-};
-hamburger.onclick = toggleMenu;
-overlay.onclick = toggleMenu;
+  /* Menu toggle */
+  const toggleMenu = () => {
+    hamburger.classList.toggle("active");
+    mobileMenu.classList.toggle("active");
+    overlay.classList.toggle("active");
+  };
+  hamburger.onclick = toggleMenu;
+  overlay.onclick = toggleMenu;
 
-/* Logout */
-logoutBtn.onclick = mobileLogout.onclick = async ()=>{
-  await signOut(auth);
-  location.href="index.html";
-};
+  /* Logout buttons */
+  logoutBtn.onclick = mobileLogout.onclick = async () => {
+    await signOut(auth);
+    location.href = "index.html";
+  };
 
-/* 🔔 SINGLE AUTH LISTENER (IMPORTANT) */
-onAuthStateChanged(auth, async (user)=>{
-  if(!user){
-    location.href="login.html";
-    return;
-  }
-
-  userEmail.textContent = user.email;
-  mobileEmail.textContent = user.email;
-
-  /* Permission only once */
-  if("Notification" in window && Notification.permission==="default"){
-    await Notification.requestPermission();
-  }
-
-  /* Save token only if allowed */
-  if(Notification.permission==="granted"){
-    try{
-      const messaging = getMessaging();
-      const token = await getToken(messaging,{
-        vapidKey:"BHlMESY7F4XVjObXbUBijOk_C6TiOh40wN11eHtP86QSZBCOEqXmqj0YHmeyGYw-G6g1-X2GKOVQ0-n1OrtUlMQ"
-      });
-      if(token){
-        await updateDoc(doc(db,"users",user.uid),{
-          fcmToken:token
-        });
-        console.log("✅ FCM token saved");
-      }
-    }catch(e){
-      console.error("❌ FCM error",e);
+  /* Auth listener */
+  onAuthStateChanged(auth, user => {
+    if(!user){
+      location.href="login.html";
+      return;
     }
-  }
+    userEmail.textContent = user.email;
+    mobileEmail.textContent = user.email;
+  });
 });
 </script>
 
