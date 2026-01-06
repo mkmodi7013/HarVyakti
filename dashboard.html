@@ -237,9 +237,12 @@ footer{
 
 <!-- Firebase + Menu script -->
 <script type="module">
-import { auth } from "./firebase.js";
+import { auth, db } from "./firebase.js";
 import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
+import { getMessaging, getToken } from 
+"https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging.js";
+import { doc, updateDoc } from 
+"https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 const userEmail = document.getElementById("userEmail");
 const mobileEmail = document.getElementById("mobileEmail");
 const logoutBtn = document.getElementById("logoutBtn");
@@ -270,6 +273,56 @@ function toggleMenu(){
 }
 hamburger.addEventListener("click",toggleMenu);
 overlay.addEventListener("click",toggleMenu);
+
+onAuthStateChanged(auth, async user => {
+  if (!user) {
+    location.href = "login.html";
+    return;
+  }
+
+  // 👇 browser notification
+  if ("Notification" in window) {
+    const permission = await Notification.requestPermission();
+    if (permission === "granted") {
+      console.log("✅ Notification permission granted");
+    } else {
+      alert("⚠️ Notification allow karo, warna work alert nahi milega");
+    }
+  }
+
+});
+
+const messaging = getMessaging();
+
+onAuthStateChanged(auth, async (user) => {
+  if (!user) {
+    location.href = "login.html";
+    return;
+  }
+
+  // 🔔 Permission
+  if ("Notification" in window && Notification.permission === "default") {
+    await Notification.requestPermission();
+  }
+
+  // 🔑 STEP-7 STARTS HERE
+  if (Notification.permission === "granted") {
+    try {
+      const token = await getToken(messaging, {
+        vapidKey: "🔥YAHAN_APNA_VAPID_KEY_DALO🔥"
+      });
+
+      if (token) {
+        await updateDoc(doc(db, "users", user.uid), {
+          fcmToken: token
+        });
+        console.log("✅ FCM Token saved");
+      }
+    } catch (e) {
+      console.error("❌ Token error", e);
+    }
+  }
+});
 </script>
 
 <footer>
