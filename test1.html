@@ -2,8 +2,11 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Worker - Accept Work</title>
+<title>Worker</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
 
 <style>
 body{font-family:Arial;background:#eef2f5;padding:20px;}
@@ -16,29 +19,45 @@ button{background:#28a745;color:#fff;border:none;padding:10px;width:100%;border-
 
 <div class="card">
   <h3>Available Work</h3>
-  <p id="workText">No work</p>
+  <p id="workText">Loading...</p>
   <button onclick="acceptWork()">Accept</button>
 </div>
 
 <script>
-const data = JSON.parse(localStorage.getItem("workData"));
+// 🔹 Firebase config
+const firebaseConfig = {
+  apiKey: "AIzaSyDT4XZtLbYRsSwM5doqkjMANf2d6oWLCuE",
+  authDomain: "harvyakti.firebaseapp.com",
+  databaseURL: "https://harvyakti-default-rtdb.firebaseio.com",
+  projectId: "harvyakti",
+  storageBucket: "harvyakti.appspot.com",
+  messagingSenderId: "394497239762",
+  appId: "1:394497239762:web:8445303e857f9aeff8db0b",
+  measurementId: "G-EPRQZ4ZH5T"
+};
 
-if(data){
-  document.getElementById("workText").innerText = data.work;
-}
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+let workId = null;
+
+// Fetch pending work
+db.collection("test")
+  .where("accepted","==",false)
+  .limit(1)
+  .onSnapshot(snapshot=>{
+    snapshot.forEach(doc=>{
+      workId = doc.id;
+      document.getElementById("workText").innerText = doc.data().work;
+    });
+  });
 
 function acceptWork(){
-  if(!data) return;
+  if(!workId) return alert("No work");
 
-  data.accepted = true;
-  localStorage.setItem("workData", JSON.stringify(data));
-
-  // Trigger notification on requester device
-  if(Notification.permission === "granted"){
-    new Notification("Work Accepted",{
-      body:"Your work has been accepted 🎉"
-    });
-  }
+  db.collection("test").doc(workId).update({
+    accepted: true
+  });
 
   alert("Work Accepted");
 }
