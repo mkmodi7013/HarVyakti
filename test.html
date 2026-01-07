@@ -1,43 +1,45 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
+<title>Requester - Generate Work</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>RTDB → Firestore Migration</title>
+
+<style>
+body{font-family:Arial;background:#f4f6f8;padding:20px;}
+.box{background:#fff;padding:15px;border-radius:8px;max-width:400px;margin:auto;}
+input,button{width:100%;padding:10px;margin-top:10px;}
+button{background:#007bff;color:#fff;border:none;border-radius:5px;}
+</style>
 </head>
 
 <body>
 
-<script type="module">
-import { rtdb, db } from "./firebase.js";
-import { ref, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-import { doc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+<div class="box">
+  <h3>Generate Work</h3>
+  <input id="work" placeholder="Enter work description">
+  <button onclick="generateWork()">Post Work</button>
+  <p id="status"></p>
+</div>
 
-async function migratePrimaryRoles(){
-  try{
-    const snap = await get(ref(rtdb,"primaryRoles"));
-    if(!snap.exists()){
-      console.log("❌ No roles found in RTDB");
-      return;
-    }
-
-    const roles = snap.val();
-    const keys = Object.keys(roles);
-
-    for(const key of keys){
-      const data = roles[key];
-      await setDoc(doc(db,"primaryRoles",key), data);
-      console.log("✅ Copied role:", key, data.roleName);
-    }
-
-    console.log(`🎉 Migration complete: ${keys.length} roles copied`);
-  }catch(err){
-    console.error("Migration error:", err);
-  }
+<script>
+// Ask notification permission
+if ("Notification" in window) {
+  Notification.requestPermission();
 }
 
-// ▶️ Run once
-migratePrimaryRoles();
+function generateWork(){
+  const work = document.getElementById("work").value;
+  if(!work) return alert("Enter work");
+
+  localStorage.setItem("workData", JSON.stringify({
+    work: work,
+    accepted: false
+  }));
+
+  document.getElementById("status").innerText =
+    "Work posted. Waiting for acceptance...";
+}
 </script>
 
 </body>

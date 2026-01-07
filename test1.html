@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Worker - Accept Work</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+body{font-family:Arial;background:#eef2f5;padding:20px;}
+.card{background:#fff;padding:15px;border-radius:8px;max-width:400px;margin:auto;}
+button{background:#28a745;color:#fff;border:none;padding:10px;width:100%;border-radius:5px;}
+</style>
+</head>
+
+<body>
+
+<div class="card">
+  <h3>Available Work</h3>
+  <p id="workText">No work</p>
+  <button onclick="acceptWork()">Accept</button>
+</div>
+
+<script>
+const data = JSON.parse(localStorage.getItem("workData"));
+
+if(data){
+  document.getElementById("workText").innerText = data.work;
+}
+
+function acceptWork(){
+  if(!data) return;
+
+  data.accepted = true;
+  localStorage.setItem("workData", JSON.stringify(data));
+
+  // Trigger notification on requester device
+  if(Notification.permission === "granted"){
+    new Notification("Work Accepted",{
+      body:"Your work has been accepted 🎉"
+    });
+  }
+
+  alert("Work Accepted");
+}
+</script>
+
+</body>
+</html>
