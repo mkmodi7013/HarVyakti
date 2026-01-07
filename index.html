@@ -177,6 +177,15 @@ footer {
   font-weight:600;
   box-shadow:0 -4px 10px rgba(0,0,0,.1);
 }
+.post-image{
+  width:100%;
+  max-height:220px;
+  object-fit:cover;
+  border-radius:10px;
+  margin:10px 0;
+  box-shadow:0 4px 10px rgba(0,0,0,.15);
+}
+
 </style>
 </head>
 <body>
@@ -223,141 +232,102 @@ footer {
 <footer>© 2025 HarVyakti</footer>
 <!-- Only JS part is modified, rest of HTML/CSS untouched -->
 <script type="module">
-  let lastRenderHash = "";
-
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { collection, getDocs, doc, getDoc, updateDoc, arrayUnion, arrayRemove, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  collection, doc, getDoc, updateDoc,
+  arrayUnion, arrayRemove, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const worksContainer = document.getElementById("worksContainer");
 const distanceFilter = document.getElementById("distanceFilter");
 const categoryFilter = document.getElementById("categoryFilter");
 
+let currentUser = null;
 let userLat = null, userLng = null;
 let allWorks = [];
-let currentUser = null;
+let lastHash = "";
 
-// 🔐 Auth check (optional login)
-onAuthStateChanged(auth, async user => {
-  currentUser = user || null; // if not logged in, currentUser = null
+/* ================= AUTH ================= */
+onAuthStateChanged(auth, user => {
+  currentUser = user || null;
   getUserLocation();
-  await subscribeToPosts();
+  subscribeToPosts();
 });
 
-distanceFilter.addEventListener("change", renderWorks);
-categoryFilter.addEventListener("change", renderWorks);
-
+/* ================= LOCATION ================= */
 function getUserLocation(){
   if(!navigator.geolocation) return;
-  navigator.geolocation.getCurrentPosition(pos => {
+  navigator.geolocation.getCurrentPosition(pos=>{
     userLat = pos.coords.latitude;
     userLng = pos.coords.longitude;
-    renderWorks();
-  });
-}
-
-function getDistance(lat1,lng1,lat2,lng2){
-  if(!lat1 || !lat2) return 0;
-  const R = 6371;
-  const dLat = (lat2-lat1)*Math.PI/180;
-  const dLng = (lng2-lng1)*Math.PI/180;
-  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLng/2)**2;
-  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
-}
-
-// 🔹 Real-time subscription
-async function subscribeToPosts(){
-  const postsCol = collection(db,"posts");
-  onSnapshot(postsCol, async snapshot => {
-    allWorks = [];
-    for(const d of snapshot.docs){
-      const w = {id:d.id, ...d.data()};
-      if(w.postedBy){
-        try{
-          const userSnap = await getDoc(doc(db,"users",w.postedBy));
-          w.senderName = userSnap.exists() ? (userSnap.data().name || "Unknown") : "Unknown";
-        } catch(e){ w.senderName = "Unknown"; }
-      } else w.senderName = "Unknown";
-
-      if(!w.likes) w.likes = [];
-      if(!w.comments) w.comments = [];
-      allWorks.push(w);
-    }
     renderWorks(true);
   });
 }
 
-// 🔹 Make functions global with login check
-window.acceptWork = async function(workId){
-  if(!currentUser){ 
-    alert("Please login to accept work");
-    location.href = "login.html";
-    return;
-  }
-  const work = allWorks.find(w=>w.id===workId);
-  if(!work) return;
-  if(work.postedBy === currentUser.uid) return alert("Cannot accept your own post");
+/* ================= DISTANCE ================= */
+function getDistance(lat1,lng1,lat2,lng2){
+  if(!lat1 || !lat2) return null;
+  const R = 6371;
+  const dLat = (lat2-lat1)*Math.PI/180;
+  const dLng = (lng2-lng1)*Math.PI/180;
+  const a =
+    Math.sin(dLat/2)**2 +
+    Math.cos(lat1*Math.PI/180) *
+    Math.cos(lat2*Math.PI/180) *
+    Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
 
-  try{
-    await updateDoc(doc(db,"posts",workId),{
-      acceptedBy: currentUser.uid,
-      status: "accepted"
-    });
-  }catch(e){ alert("❌ "+e.message); }
-};
+/* ================= REALTIME POSTS ================= */
+function subscribeToPosts(){
+  const postsCol = collection(db,"posts");
 
-window.toggleComments = function(workId){
-  const sec = document.getElementById("comments-"+workId);
-  if(sec) sec.style.display = sec.style.display==="none"?"block":"none";
-};
+  onSnapshot(postsCol, async snapshot=>{
+    const temp = [];
+    const userCache = {};
 
-window.addComment = async function(workId, input){
-  if(!currentUser){
-    alert("Please login to comment");
-    location.href = "login.html";
-    return;
-  }
-  const text = input.value.trim();
-  if(!text) return;
-  try{
-    await updateDoc(doc(db,"posts",workId),{
-      comments: arrayUnion({userId:currentUser.uid, text})
-    });
-    input.value="";
-  }catch(e){ alert("Failed: "+e.message); }
-};
+    for(const d of snapshot.docs){
+      const w = { id:d.id, ...d.data() };
 
-window.toggleLike = async function(workId){
-  if(!currentUser){
-    alert("Please login to like");
-    location.href = "login.html";
-    return;
-  }
-  const work = allWorks.find(w=>w.id===workId);
-  if(!work) return;
-  const liked = work.likes.includes(currentUser.uid);
-  try{
-    await updateDoc(doc(db,"posts",workId),{
-      likes: liked ? arrayRemove(currentUser.uid) : arrayUnion(currentUser.uid)
-    });
-  }catch(e){ alert("Failed to like/unlike"); }
-};
+      if(w.postedBy){
+        if(!userCache[w.postedBy]){
+          try{
+            const u = await getDoc(doc(db,"users",w.postedBy));
+            userCache[w.postedBy] = u.exists() ? (u.data().name || "Unknown") : "Unknown";
+          }catch{
+            userCache[w.postedBy] = "Unknown";
+          }
+        }
+        w.senderName = userCache[w.postedBy];
+      }else{
+        w.senderName = "Unknown";
+      }
 
+      w.likes ||= [];
+      w.comments ||= [];
+      temp.push(w);
+    }
+
+    allWorks = temp;
+    renderWorks(true);
+  });
+}
+
+/* ================= RENDER ================= */
 function renderWorks(force=false){
-  const hash = JSON.stringify(allWorks.map(w => ({
-    id: w.id,
-    likes: w.likes.length,
-    comments: w.comments.length,
-    status: w.status
-  })));
+  const hash = JSON.stringify(allWorks.map(w=>[
+    w.id, w.likes.length, w.comments.length, w.status
+  ]));
 
-  if(!force && hash === lastRenderHash) return;
-  lastRenderHash = hash;
+  if(!force && hash === lastHash) return;
+  lastHash = hash;
 
-  worksContainer.innerHTML = "";
-  let limit = distanceFilter.value;
-  let cat = categoryFilter.value;
-  let found = 0;
+  const limit = distanceFilter.value;
+  const cat = categoryFilter.value;
+
+  let html = "";
+  let found = false;
 
   for(const w of allWorks){
     if(w.status !== "open") continue;
@@ -365,62 +335,109 @@ function renderWorks(force=false){
 
     let distText = "N/A";
     if(userLat && w.location?.lat){
-      let dist = getDistance(userLat,userLng,w.location.lat,w.location.lng);
-      distText = dist<1 ? Math.round(dist*1000)+" m" : dist.toFixed(2)+" km";
-      if(limit!=="all" && dist>Number(limit)) continue;
+      const d = getDistance(userLat,userLng,w.location.lat,w.location.lng);
+      if(d){
+        if(limit !== "all" && d > Number(limit)) continue;
+        distText = d < 1 ? Math.round(d*1000)+" m" : d.toFixed(2)+" km";
+      }
     }
 
-    const isSelfPost = currentUser && w.postedBy === currentUser.uid;
-    found++;
+    found = true;
+    const isSelf = currentUser && w.postedBy === currentUser.uid;
 
-    worksContainer.innerHTML += `
-      <div class="work-card">
-        <p><b>Category:</b> ${w.category}</p>
-        <p><b>Description:</b> ${w.description}</p>
-        <p>${w.category==="ride"?`From: ${w.from} → To: ${w.to} | Seats: ${w.seats}`:
-            w.category==="work"?`Amount: ₹${w.amount}`:
-            w.category==="idea"?`Type: ${w.ideaType}`:
-            w.category==="problem"?`Type: ${w.problemType}`:""}</p>
-        <p><b>Status:</b> <span class="status-badge status-open">${w.status}</span></p>
-        <p><b>Sender:</b> ${w.senderName}</p>
-        <p><b>Distance:</b> ${distText}</p>
-        ${w.category !== "idea" ? 
-          `<button onclick="acceptWork('${w.id}')" ${isSelfPost?"disabled":""}>Accept Work</button>` 
-          : ""}
-        <button onclick="toggleLike('${w.id}')">❤️ ${w.likes.length}</button>
-        <button onclick="toggleComments('${w.id}')">💬 ${w.comments.length}</button>
-        <div class="comment-section" id="comments-${w.id}">
-          ${w.comments.map(c=>`<div class="comment-item">${c.text}</div>`).join("")}
-          <div class="comment-box">
-            <input type="text" placeholder="Add comment">
-            <button onclick="addComment('${w.id}', this.previousElementSibling)">Add</button>
-          </div>
+    html += `
+    <div class="work-card">
+      <p><b>Category:</b> ${w.category}</p>
+      <p><b>Description:</b> ${w.description}</p>
+
+      ${w.image ? `<img src="${w.image}" loading="lazy" class="post-image">` : ""}
+
+      <p>${
+        w.category==="ride" ? `From: ${w.from} → To: ${w.to} | Seats: ${w.seats}` :
+        w.category==="work" ? `Amount: ₹${w.amount}` :
+        w.category==="idea" ? `Type: ${w.ideaType}` :
+        w.category==="problem" ? `Type: ${w.problemType}` : ""
+      }</p>
+
+      <p><b>Status:</b>
+        <span class="status-badge status-open">${w.status}</span>
+      </p>
+
+      <p><b>Sender:</b> ${w.senderName}</p>
+      <p><b>Distance:</b> ${distText}</p>
+
+      ${w.category!=="idea" ?
+        `<button onclick="acceptWork('${w.id}')" ${isSelf?"disabled":""}>Accept Work</button>`
+        : ""}
+
+      <button onclick="toggleLike('${w.id}')">❤️ ${w.likes.length}</button>
+      <button onclick="toggleComments('${w.id}')">💬 ${w.comments.length}</button>
+
+      <div class="comment-section" id="comments-${w.id}">
+        ${w.comments.map(c=>`<div class="comment-item">${c.text}</div>`).join("")}
+        <div class="comment-box">
+          <input type="text" placeholder="Add comment">
+          <button onclick="addComment('${w.id}', this.previousElementSibling)">Add</button>
         </div>
-      </div>`;
+      </div>
+    </div>`;
   }
 
-  if(!found){
-    worksContainer.innerHTML='<div class="empty">No works found</div>';
-  }
+  worksContainer.innerHTML = found ? html : `<div class="empty">No works found</div>`;
 }
 
-// PWA install prompt handling (unchanged)
-let deferredPrompt;
-window.addEventListener('beforeinstallprompt', (e) => {
-    e.preventDefault();
-    deferredPrompt = e;
-    document.getElementById('installBtn').style.display = 'block';
-});
+/* ================= EVENTS ================= */
+distanceFilter.onchange = () => requestAnimationFrame(renderWorks);
+categoryFilter.onchange = () => requestAnimationFrame(renderWorks);
 
-document.getElementById('installBtn').addEventListener('click', async () => {
-    if(deferredPrompt){
-        deferredPrompt.prompt();
-        const { outcome } = await deferredPrompt.userChoice;
-        deferredPrompt = null;
-        document.getElementById('installBtn').style.display = 'none';
-    }
-});
+/* ================= ACTIONS ================= */
+window.acceptWork = async id=>{
+  if(!currentUser){
+    alert("Please login");
+    location.href="login.html";
+    return;
+  }
+  await updateDoc(doc(db,"posts",id),{
+    acceptedBy: currentUser.uid,
+    status:"accepted"
+  });
+};
+
+window.toggleLike = async id=>{
+  if(!currentUser){
+    alert("Please login");
+    location.href="login.html";
+    return;
+  }
+  const w = allWorks.find(x=>x.id===id);
+  if(!w) return;
+  await updateDoc(doc(db,"posts",id),{
+    likes: w.likes.includes(currentUser.uid)
+      ? arrayRemove(currentUser.uid)
+      : arrayUnion(currentUser.uid)
+  });
+};
+
+window.toggleComments = id=>{
+  const el = document.getElementById("comments-"+id);
+  if(el) el.style.display = el.style.display==="block"?"none":"block";
+};
+
+window.addComment = async(id,input)=>{
+  if(!currentUser){
+    alert("Please login");
+    location.href="login.html";
+    return;
+  }
+  const text = input.value.trim();
+  if(!text) return;
+  await updateDoc(doc(db,"posts",id),{
+    comments: arrayUnion({ userId:currentUser.uid, text })
+  });
+  input.value="";
+};
 </script>
+
 
 <script>
 if ("serviceWorker" in navigator) {

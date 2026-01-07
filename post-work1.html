@@ -98,6 +98,11 @@ button{background:#2196f3;color:#fff;border:none;font-size:16px;}
   </select>
 
   <textarea id="desc" placeholder="Write Your need, earn rewards and money..."></textarea>
+<label><b>Upload Image (optional)</b></label>
+<input type="file" id="imageInput" accept="image/*">
+<p style="font-size:13px;color:#666">
+  Max size: 500 KB | If not selected, category image will be used
+</p>
 
   <div id="ride" class="extra">
     <input id="from" placeholder="From">
@@ -165,6 +170,23 @@ if("geolocation" in navigator){
   );
 }
 
+const DEFAULT_IMAGES = {
+  ride: "assets/ride.png",
+  work: "assets/work.png",
+  idea: "assets/idea.png",
+  problem: "assets/problem.png"
+};
+const imageInput = document.getElementById("imageInput");
+const MAX_IMAGE_SIZE = 500 * 1024; // 500 KB
+
+function readImageAsBase64(file){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 
 /* 💾 Save */
@@ -174,11 +196,26 @@ window.savePost = async function(){
     return;
   }
 
+  let imageData = DEFAULT_IMAGES[category.value]; // default
+
+  // 🔹 If user uploaded image
+  if(imageInput.files.length){
+    const file = imageInput.files[0];
+
+    if(file.size > MAX_IMAGE_SIZE){
+      alert("❌ Image too large. Max 500 KB allowed");
+      return;
+    }
+
+    imageData = await readImageAsBase64(file); // base64 image
+  }
+
   const data={
     category:category.value,
     description:desc.value,
+    image:imageData,              // ✅ image stored
     location:userLocation,
-     status: "open", 
+    status:"open",
     postedBy:auth.currentUser.uid,
     createdAt:serverTimestamp()
   };
@@ -200,6 +237,7 @@ window.savePost = async function(){
     alert("❌ Error saving post");
   }
 };
+
 </script>
 
 </body>
