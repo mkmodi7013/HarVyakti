@@ -7,7 +7,6 @@
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#4facfe">
 
-
 <style>
 /* ================= Body & Global ================= */
 body {
@@ -111,7 +110,6 @@ main { flex:1; padding:140px 20px 20px; }
 }
 .status-open { background:#2e7d32; }
 
-
 /* Buttons */
 button {
   padding:8px 14px;
@@ -185,7 +183,6 @@ footer {
   margin:10px 0;
   box-shadow:0 4px 10px rgba(0,0,0,.15);
 }
-
 </style>
 </head>
 <body>
@@ -222,15 +219,15 @@ footer {
 
 <div id="worksContainer"></div>
 </main>
+
 <!-- Bottom-right Install Button -->
 <button id="installBtn" 
         style="display:none; position:fixed; bottom:20px; right:20px; padding:10px 15px; background:#007bff; color:white; border:none; border-radius:8px; box-shadow:0 4px 6px rgba(0,0,0,0.2); cursor:pointer; z-index:1000;">
     Install App
 </button>
 
-
 <footer>© 2025 HarVyakti</footer>
-<!-- Only JS part is modified, rest of HTML/CSS untouched -->
+
 <script type="module">
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -248,11 +245,26 @@ let userLat = null, userLng = null;
 let allWorks = [];
 let lastHash = "";
 
+/* ========= USER CACHE (🔥 SPEED FIX) ========= */
+const userCache = {};
+async function getUserName(uid){
+  if(!uid) return "Unknown";
+  if(userCache[uid]) return userCache[uid];
+
+  try{
+    const snap = await getDoc(doc(db,"users",uid));
+    userCache[uid] = snap.exists() ? (snap.data().name || "Unknown") : "Unknown";
+  }catch{
+    userCache[uid] = "Unknown";
+  }
+  return userCache[uid];
+}
+
 /* ================= AUTH ================= */
 onAuthStateChanged(auth, user => {
   currentUser = user || null;
-  getUserLocation();
   subscribeToPosts();
+  getUserLocation();
 });
 
 /* ================= LOCATION ================= */
@@ -267,7 +279,6 @@ function getUserLocation(){
 
 /* ================= DISTANCE ================= */
 function getDistance(lat1,lng1,lat2,lng2){
-  if(!lat1 || !lat2) return null;
   const R = 6371;
   const dLat = (lat2-lat1)*Math.PI/180;
   const dLng = (lng2-lng1)*Math.PI/180;
@@ -281,34 +292,15 @@ function getDistance(lat1,lng1,lat2,lng2){
 
 /* ================= REALTIME POSTS ================= */
 function subscribeToPosts(){
-  const postsCol = collection(db,"posts");
-
-  onSnapshot(postsCol, async snapshot=>{
+  onSnapshot(collection(db,"posts"), async snap=>{
     const temp = [];
-    const userCache = {};
-
-    for(const d of snapshot.docs){
+    for(const d of snap.docs){
       const w = { id:d.id, ...d.data() };
-
-      if(w.postedBy){
-        if(!userCache[w.postedBy]){
-          try{
-            const u = await getDoc(doc(db,"users",w.postedBy));
-            userCache[w.postedBy] = u.exists() ? (u.data().name || "Unknown") : "Unknown";
-          }catch{
-            userCache[w.postedBy] = "Unknown";
-          }
-        }
-        w.senderName = userCache[w.postedBy];
-      }else{
-        w.senderName = "Unknown";
-      }
-
+      w.senderName = await getUserName(w.postedBy);
       w.likes ||= [];
       w.comments ||= [];
       temp.push(w);
     }
-
     allWorks = temp;
     renderWorks(true);
   });
@@ -319,7 +311,6 @@ function renderWorks(force=false){
   const hash = JSON.stringify(allWorks.map(w=>[
     w.id, w.likes.length, w.comments.length, w.status
   ]));
-
   if(!force && hash === lastHash) return;
   lastHash = hash;
 
@@ -334,11 +325,26 @@ function renderWorks(force=false){
     if(cat !== "all" && w.category !== cat) continue;
 
     let distText = "N/A";
-    if(userLat && w.location?.lat){
-      const d = getDistance(userLat,userLng,w.location.lat,w.location.lng);
-      if(d){
-        if(limit !== "all" && d > Number(limit)) continue;
-        distText = d < 1 ? Math.round(d*1000)+" m" : d.toFixed(2)+" km";
+    if (
+      userLat !== null &&
+      userLng !== null &&
+      w.location?.lat &&
+      w.location?.lng
+    ) {
+      const postLat = Number(w.location.lat);
+      const postLng = Number(w.location.lng);
+
+      if (!isNaN(postLat) && !isNaN(postLng)) {
+        const d = getDistance(userLat, userLng, postLat, postLng);
+
+        if (d !== null) {
+          if(limit !== "all" && d > Number(limit)) continue;
+
+          if(d < 0.05) distText = "0 m";
+          else if(d < 1) distText = Math.round(d*1000)+" m";
+          else if(d <= 200) distText = d.toFixed(1)+" km";
+          else distText = "Far away";
+        }
       }
     }
 
@@ -366,9 +372,7 @@ function renderWorks(force=false){
       <p><b>Sender:</b> ${w.senderName}</p>
       <p><b>Distance:</b> ${distText}</p>
 
-      ${w.category!=="idea" ?
-        `<button onclick="acceptWork('${w.id}')" ${isSelf?"disabled":""}>Accept Work</button>`
-        : ""}
+      ${w.category!=="idea" ? `<button onclick="acceptWork('${w.id}')" ${isSelf?"disabled":""}>Accept Work</button>` : ""}
 
       <button onclick="toggleLike('${w.id}')">❤️ ${w.likes.length}</button>
       <button onclick="toggleComments('${w.id}')">💬 ${w.comments.length}</button>
@@ -387,16 +391,12 @@ function renderWorks(force=false){
 }
 
 /* ================= EVENTS ================= */
-distanceFilter.onchange = () => requestAnimationFrame(renderWorks);
-categoryFilter.onchange = () => requestAnimationFrame(renderWorks);
+distanceFilter.onchange = ()=>requestAnimationFrame(renderWorks);
+categoryFilter.onchange = ()=>requestAnimationFrame(renderWorks);
 
 /* ================= ACTIONS ================= */
 window.acceptWork = async id=>{
-  if(!currentUser){
-    alert("Please login");
-    location.href="login.html";
-    return;
-  }
+  if(!currentUser){ location.href="login.html"; return; }
   await updateDoc(doc(db,"posts",id),{
     acceptedBy: currentUser.uid,
     status:"accepted"
@@ -404,11 +404,7 @@ window.acceptWork = async id=>{
 };
 
 window.toggleLike = async id=>{
-  if(!currentUser){
-    alert("Please login");
-    location.href="login.html";
-    return;
-  }
+  if(!currentUser){ location.href="login.html"; return; }
   const w = allWorks.find(x=>x.id===id);
   if(!w) return;
   await updateDoc(doc(db,"posts",id),{
@@ -424,11 +420,7 @@ window.toggleComments = id=>{
 };
 
 window.addComment = async(id,input)=>{
-  if(!currentUser){
-    alert("Please login");
-    location.href="login.html";
-    return;
-  }
+  if(!currentUser){ location.href="login.html"; return; }
   const text = input.value.trim();
   if(!text) return;
   await updateDoc(doc(db,"posts",id),{
@@ -438,7 +430,6 @@ window.addComment = async(id,input)=>{
 };
 </script>
 
-
 <script>
 if ("serviceWorker" in navigator) {
   navigator.serviceWorker.register("/service-worker.js")
@@ -446,8 +437,6 @@ if ("serviceWorker" in navigator) {
     .catch(err => console.log("❌ SW registration failed", err));
 }
 </script>
-
-
 
 </body>
 </html>

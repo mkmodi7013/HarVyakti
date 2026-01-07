@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Post Work</title>
+<title>Post Work | HarVyakti</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <style>
@@ -40,28 +40,13 @@ nav a{
   position:relative;
 }
 nav a::after{
-  content:'';
-  position:absolute;
-  width:0;height:2px;
-  bottom:-3px;left:0;
-  background:#fff;
-  transition:.3s;
+  content:''; position:absolute; width:0; height:2px; bottom:-3px; left:0; background:#fff; transition:.3s;
 }
 nav a:hover::after{width:100%}
 
-main{
-  flex:1;
-  padding-top:110px; /* header height */
-}
-
-
-footer{
-  background:#1c1c1c;
-  color:#fff;
-  text-align:center;
-  padding:15px 0;
-}
-.container{max-width:500px;margin:20px auto;background:#fff;padding:15px;border-radius:8px;}
+main{ flex:1; padding-top:110px; }
+footer{ background:#1c1c1c; color:#fff; text-align:center; padding:15px 0; }
+.container{ max-width:500px; margin:20px auto; background:#fff; padding:15px; border-radius:8px; }
 h2{text-align:center;}
 select,input,textarea,button{
   width:100%;padding:10px;margin:8px 0;
@@ -69,11 +54,9 @@ select,input,textarea,button{
 }
 .extra{display:none;}
 button{background:#2196f3;color:#fff;border:none;font-size:16px;}
-
 #locationText{font-size:14px;color:#555;}
 </style>
 </head>
-
 <body>
 
 <header>
@@ -85,6 +68,7 @@ button{background:#2196f3;color:#fff;border:none;font-size:16px;}
     </nav>
   </div>
 </header>
+
 <main>
 <div class="container">
   <h2>Create Post</h2>
@@ -97,12 +81,11 @@ button{background:#2196f3;color:#fff;border:none;font-size:16px;}
     <option value="problem">Problem</option>
   </select>
 
-  <textarea id="desc" placeholder="Write Your need, earn rewards and money..."></textarea>
-<label><b>Upload Image (optional)</b></label>
-<input type="file" id="imageInput" accept="image/*">
-<p style="font-size:13px;color:#666">
-  Max size: 500 KB | If not selected, category image will be used
-</p>
+  <textarea id="desc" placeholder="Write your need, earn rewards and money..."></textarea>
+
+  <label><b>Upload Image (optional)</b></label>
+  <input type="file" id="imageInput" accept="image/*">
+  <p style="font-size:13px;color:#666">Max size: 500 KB | If not selected, category image will be used</p>
 
   <div id="ride" class="extra">
     <input id="from" placeholder="From">
@@ -132,20 +115,28 @@ button{background:#2196f3;color:#fff;border:none;font-size:16px;}
 
   <p id="locationText">📍 Detecting location...</p>
 
- 
   <button onclick="savePost()">Post</button>
-
 </div>
 </main>
+
 <footer>© 2025 HarVyakti</footer>
+
 <script type="module">
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 let userLocation = null;
+const imageInput = document.getElementById("imageInput");
+const MAX_IMAGE_SIZE = 500 * 1024; // 500 KB
+const DEFAULT_IMAGES = {
+  ride: "assets/ride.png",
+  work: "assets/work.png",
+  idea: "assets/idea.png",
+  problem: "assets/problem.png"
+};
 
-/* 🔐 Auth check */
+// ----------------- Auth check -----------------
 onAuthStateChanged(auth,user=>{
   if(!user){
     alert("Please login first");
@@ -153,13 +144,13 @@ onAuthStateChanged(auth,user=>{
   }
 });
 
-/* 🔹 Category toggle */
+// ----------------- Category toggle -----------------
 window.changeCategory = function(){
   document.querySelectorAll(".extra").forEach(e=>e.style.display="none");
   if(category.value) document.getElementById(category.value).style.display="block";
 };
 
-/* 📍 Location */
+// ----------------- Location -----------------
 if("geolocation" in navigator){
   navigator.geolocation.getCurrentPosition(
     pos=>{
@@ -170,15 +161,7 @@ if("geolocation" in navigator){
   );
 }
 
-const DEFAULT_IMAGES = {
-  ride: "assets/ride.png",
-  work: "assets/work.png",
-  idea: "assets/idea.png",
-  problem: "assets/problem.png"
-};
-const imageInput = document.getElementById("imageInput");
-const MAX_IMAGE_SIZE = 500 * 1024; // 500 KB
-
+// ----------------- Read image -----------------
 function readImageAsBase64(file){
   return new Promise((resolve,reject)=>{
     const reader = new FileReader();
@@ -188,8 +171,48 @@ function readImageAsBase64(file){
   });
 }
 
+// ----------------- Image moderation -----------------
+const SIGHTENGINE_USER = "1383922357"; // replace
+const SIGHTENGINE_SECRET = "fnGciqd5gaaRSMWSShswChpjQHoCf2XH"; // replace
 
-/* 💾 Save */
+async function checkImageSafety(file){
+  try{
+    const form = new FormData();
+    
+    // send the file directly (preferred)
+    form.append('media', file);  
+
+    // specify models and credentials
+    
+    form.append('models', 'nudity,offensive,scam');
+    form.append('api_user', SIGHTENGINE_USER);
+    form.append('api_secret', SIGHTENGINE_SECRET);
+
+    const resp = await fetch('https://api.sightengine.com/1.0/check.json', {
+      method:'POST',
+      body: form
+    });
+
+    if(!resp.ok){
+      console.error("HTTP error:", resp.status, await resp.text());
+      return true; // allow if API fails
+    }
+
+    const result = await resp.json();
+
+    if(result.nudity?.raw >= 0.5 || result.offensive?.prob >= 0.5 || result.scam?.prob >= 0.5){
+      return false; // unsafe
+    }
+
+    return true; // safe
+
+  }catch(e){
+    console.error("Image moderation failed:", e);
+    return true; // allow if API fails
+  }
+}
+
+// ----------------- Save Post -----------------
 window.savePost = async function(){
   if(!category.value || !desc.value){
     alert("Category & description required");
@@ -198,22 +221,27 @@ window.savePost = async function(){
 
   let imageData = DEFAULT_IMAGES[category.value]; // default
 
-  // 🔹 If user uploaded image
   if(imageInput.files.length){
     const file = imageInput.files[0];
-
     if(file.size > MAX_IMAGE_SIZE){
       alert("❌ Image too large. Max 500 KB allowed");
       return;
     }
 
-    imageData = await readImageAsBase64(file); // base64 image
-  }
+const safe = await checkImageSafety(file);
+if(!safe){
+  alert("❌ Image blocked due to nudity/spam/offensive content");
+  return;
+}
 
+// optionally convert to base64 to save in Firestore
+const imageData = await readImageAsBase64(file);
+
+  }
   const data={
     category:category.value,
     description:desc.value,
-    image:imageData,              // ✅ image stored
+    image:imageData,
     location:userLocation,
     status:"open",
     postedBy:auth.currentUser.uid,
@@ -237,7 +265,6 @@ window.savePost = async function(){
     alert("❌ Error saving post");
   }
 };
-
 </script>
 
 </body>

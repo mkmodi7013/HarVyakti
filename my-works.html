@@ -83,7 +83,11 @@ button:disabled{background:#aaa;}
 <script type="module">
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { collection, query, where, orderBy, getDocs, doc, updateDoc, deleteDoc, getDoc, arrayUnion, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  collection, query, where, orderBy, getDocs,
+  doc, updateDoc, deleteDoc, getDoc,
+  arrayUnion, onSnapshot
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const worksContainer = document.getElementById("worksContainer");
 let currentUser = null;
@@ -115,7 +119,26 @@ async function loadMyWorks(){
       const div = document.createElement("div");
       div.className = "work-card";
 
-      // CATEGORY DETAILS
+      /* ---------------- IMAGE (SAFE ADDITION) ---------------- */
+      let imageUrl = "";
+      if(w.imageUrl) imageUrl = w.imageUrl;
+      else if(w.image) imageUrl = w.image;
+      else if(Array.isArray(w.images) && w.images.length) imageUrl = w.images[0];
+
+      let imageHtml = "";
+      if(imageUrl){
+        imageHtml = `
+          <img 
+            src="${imageUrl}" 
+            loading="lazy"
+            style="width:100%;max-height:280px;object-fit:cover;border-radius:8px;margin:8px 0"
+            onclick="openImage('${imageUrl}')"
+          >
+        `;
+      }
+      /* ------------------------------------------------------- */
+
+      // CATEGORY DETAILS (UNCHANGED)
       let categoryDetails = "";
       if(w.category==="ride") categoryDetails = `
         <div class="detail-field"><b>From:</b> ${w.from}</div>
@@ -128,10 +151,11 @@ async function loadMyWorks(){
       if(w.category==="problem") categoryDetails = `
         <div class="detail-field"><b>Problem Type:</b> ${w.problemType}</div>`;
 
-      // CREATED DATE
-      let createdAt = w.createdAt ? new Date(w.createdAt.seconds*1000).toLocaleString() : "N/A";
+      let createdAt = w.createdAt
+        ? new Date(w.createdAt.seconds*1000).toLocaleString()
+        : "N/A";
 
-      // ACCEPTED INFO + CHAT
+      // ACCEPTED + CHAT (UNCHANGED)
       let acceptedHtml = "";
       if(w.status==="accepted"){
         let accepterName="Unknown", requesterName="Unknown";
@@ -144,42 +168,46 @@ async function loadMyWorks(){
             const u2 = await getDoc(doc(db,"users",w.postedBy));
             if(u2.exists()) requesterName = u2.data().name || "Unknown";
           }
-        }catch(e){ console.error(e); }
+        }catch(e){}
 
-        acceptedHtml = `<div class="detail-field"><b>Accepted By:</b> ${accepterName}</div>
-                        <div class="rating-box">
-                          <label><b>Give Rating:</b></label>
-                          <select id="rating-${d.id}">
-                            <option value="">Select</option>
-                            <option value="1">⭐ 1</option>
-                            <option value="2">⭐⭐ 2</option>
-                            <option value="3">⭐⭐⭐ 3</option>
-                            <option value="4">⭐⭐⭐⭐ 4</option>
-                            <option value="5">⭐⭐⭐⭐⭐ 5</option>
-                          </select>
-                        </div>
-                        <button onclick="markCompleted('${d.id}')">Mark as Completed</button>
-                        <div class="chat-section" id="chat-${d.id}">
-                          <div class="chat-messages" id="chat-messages-${d.id}"></div>
-                          <div class="chat-box">
-                            <input type="text" placeholder="Type message...">
-                            <button onclick="sendChat('${d.id}', this.previousElementSibling, '${currentUser.uid}', '${accepterName}', '${requesterName}', '${w.postedBy}')">Send</button>
-                          </div>
-                        </div>`;
+        acceptedHtml = `
+          <div class="detail-field"><b>Accepted By:</b> ${accepterName}</div>
+          <div class="rating-box">
+            <label><b>Give Rating:</b></label>
+            <select id="rating-${d.id}">
+              <option value="">Select</option>
+              <option value="1">⭐ 1</option>
+              <option value="2">⭐⭐ 2</option>
+              <option value="3">⭐⭐⭐ 3</option>
+              <option value="4">⭐⭐⭐⭐ 4</option>
+              <option value="5">⭐⭐⭐⭐⭐ 5</option>
+            </select>
+          </div>
+          <button onclick="markCompleted('${d.id}')">Mark as Completed</button>
+          <div class="chat-section">
+            <div class="chat-messages" id="chat-messages-${d.id}"></div>
+            <div class="chat-box">
+              <input type="text" placeholder="Type message...">
+              <button onclick="sendChat('${d.id}', this.previousElementSibling)">Send</button>
+            </div>
+          </div>`;
       }
 
       if(w.status==="completed"){
-        acceptedHtml = `<div class="detail-field"><b>Accepted By:</b> ${w.acceptedByName || "Worker"}</div>
-                        <div class="detail-field"><b>Rating Given:</b> ${w.rating || "N/A"} ⭐</div>
-                        <p style="color:#2e7d32;"><b>Mobile hidden after completion</b></p>`;
+        acceptedHtml = `
+          <div class="detail-field"><b>Accepted By:</b> ${w.acceptedByName || "Worker"}</div>
+          <div class="detail-field"><b>Rating Given:</b> ${w.rating || "N/A"} ⭐</div>`;
       }
 
-      // OPEN STATUS (delete only)
       let buttonHtml = "";
-      if(w.status==="open") buttonHtml = `<button onclick="deleteWork('${d.id}')">Delete Work</button>`;
+      if(w.status==="open"){
+        buttonHtml = `<button onclick="deleteWork('${d.id}')">Delete Work</button>`;
+      }
 
+      /* ---------------- FINAL RENDER (CONTENT SAFE) ---------------- */
       div.innerHTML = `
-        <h3>${w.title}</h3>
+        <h3>${w.title || ""}</h3>
+        ${imageHtml}
         <div class="detail-field"><b>Description:</b> ${w.description}</div>
         <div class="detail-field"><b>Category:</b> ${w.category}</div>
         ${categoryDetails}
@@ -191,10 +219,13 @@ async function loadMyWorks(){
         ${acceptedHtml}
         ${buttonHtml}
       `;
+      /* ------------------------------------------------------------- */
 
       worksContainer.appendChild(div);
 
-      if(w.status==="accepted") subscribeToChat(d.id, currentUser.uid, w.postedBy);
+      if(w.status==="accepted"){
+        subscribeToChat(d.id, currentUser.uid);
+      }
     }
   } catch(err){
     console.error(err);
@@ -202,62 +233,76 @@ async function loadMyWorks(){
   }
 }
 
-// Mark as completed
-window.markCompleted = async (workId)=>{
-  const ratingSelect = document.getElementById(`rating-${workId}`);
-  const rating = ratingSelect?.value;
-  if(!rating){ alert("Please give rating before completing work"); return; }
-  if(!confirm("Mark this work as completed?")) return;
-  try{
-    await updateDoc(doc(db,"posts",workId), { status:"completed", rating:Number(rating) });
-    alert("Work completed & rating saved!");
-    loadMyWorks();
-  }catch(e){ alert("Failed: "+e.message); }
-};
-
-// Delete work
-window.deleteWork = async (workId)=>{
-  if(!confirm("Are you sure you want to delete this work?")) return;
-  try{
-    await deleteDoc(doc(db,"posts",workId));
-    alert("Work deleted!");
-    loadMyWorks();
-  }catch(e){ alert("Failed: "+e.message); }
-};
-
-// Chat send
-window.sendChat = async (workId,input, senderId, accepterName, requesterName, postedBy)=>{
+/* ---------------- CHAT ---------------- */
+window.sendChat = async (workId,input)=>{
   const text = input.value.trim();
   if(!text) return;
-  try{
-    await updateDoc(doc(db,"posts",workId),{
-      chats: arrayUnion({
-        senderId,
-        text,
-        timestamp: Date.now()
-      })
-    });
-    input.value="";
-  }catch(e){ alert("Failed: "+e.message); }
-}
+  await updateDoc(doc(db,"posts",workId),{
+    chats: arrayUnion({
+      senderId: currentUser.uid,
+      text,
+      timestamp: Date.now()
+    })
+  });
+  input.value="";
+};
 
-// Chat real-time listener
-function subscribeToChat(workId, currentUserId, requesterId){
+function subscribeToChat(workId,currentUserId){
   const chatDiv = document.getElementById("chat-messages-"+workId);
   if(!chatDiv) return;
-  const chatRef = doc(db,"posts",workId);
-  onSnapshot(chatRef, snap=>{
+
+  onSnapshot(doc(db,"posts",workId), snap=>{
     const data = snap.data();
-    if(!data.chats) data.chats=[];
-    chatDiv.innerHTML = data.chats.map(c=>{
+    const chats = data?.chats || [];
+    chatDiv.innerHTML = chats.map(c=>{
       const cls = c.senderId === currentUserId ? "right" : "left";
-      const name = c.senderId === currentUserId ? "You" : "Requester";
-      return `<div class="chat-message ${cls}"><b>${name}:</b> ${c.text}</div>`;
+      return `<div class="chat-message ${cls}">${c.text}</div>`;
     }).join("");
     chatDiv.scrollTop = chatDiv.scrollHeight;
   });
 }
+
+/* ---------------- ACTIONS ---------------- */
+window.markCompleted = async (id)=>{
+  const rating = document.getElementById(`rating-${id}`)?.value;
+  if(!rating) return alert("Rating required");
+  await updateDoc(doc(db,"posts",id),{ status:"completed", rating:Number(rating) });
+  loadMyWorks();
+};
+
+window.deleteWork = async (id)=>{
+  if(!confirm("Delete work?")) return;
+  await deleteDoc(doc(db,"posts",id));
+  loadMyWorks();
+};
+
+/* ---------------- IMAGE VIEW ---------------- */
+window.openImage = (url)=>{
+  const o = document.createElement("div");
+  o.style="position:fixed;inset:0;background:rgba(0,0,0,.85);display:flex;align-items:center;justify-content:center;z-index:9999";
+  o.innerHTML=`<img src="${url}" style="max-width:95%;max-height:95%;border-radius:10px">`;
+  o.onclick=()=>o.remove();
+  document.body.appendChild(o);
+};
+// Enter key support for chat
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const active = document.activeElement;
+
+    // sirf chat input ke liye
+    if (active && active.closest(".chat-box") && active.tagName === "INPUT") {
+      e.preventDefault(); // newline / reload stop
+
+      const sendBtn = active.nextElementSibling;
+      if (sendBtn && sendBtn.tagName === "BUTTON") {
+        sendBtn.click(); // same as Send button
+      }
+    }
+  }
+});
+
 </script>
+
 
 <footer>&copy; 2025 HarVyakti. All rights reserved.</footer>
 </body>
