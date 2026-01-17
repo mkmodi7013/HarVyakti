@@ -124,7 +124,13 @@ button{background:#2196f3;color:#fff;border:none;font-size:16px;}
 <script type="module">
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import {
+  collection,
+  addDoc,
+  serverTimestamp,
+  doc,
+  updateDoc
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 let userLocation = null;
 const imageInput = document.getElementById("imageInput");
@@ -214,57 +220,67 @@ async function checkImageSafety(file){
 
 // ----------------- Save Post -----------------
 window.savePost = async function(){
+
+  // ✅ VALIDATION FIRST
   if(!category.value || !desc.value){
     alert("Category & description required");
     return;
   }
 
-  let imageData = DEFAULT_IMAGES[category.value]; // default
-
-  if(imageInput.files.length){
-    const file = imageInput.files[0];
-    if(file.size > MAX_IMAGE_SIZE){
-      alert("❌ Image too large. Max 500 KB allowed");
-      return;
-    }
-
-const safe = await checkImageSafety(file);
-if(!safe){
-  alert("❌ Image blocked due to nudity/spam/offensive content");
-  return;
-}
-
-// optionally convert to base64 to save in Firestore
-const imageData = await readImageAsBase64(file);
-
-  }
-  const data={
-    category:category.value,
-    description:desc.value,
-    image:imageData,
-    location:userLocation,
-    status:"open",
-    postedBy:auth.currentUser.uid,
-    createdAt:serverTimestamp()
+  // 🔥 FAST POST
+  const baseData = {
+    category: category.value,
+    description: desc.value,
+    image: DEFAULT_IMAGES[category.value],
+    location: userLocation,
+    status: "processing",
+    postedBy: auth.currentUser.uid,
+    createdAt: serverTimestamp()
   };
 
   if(category.value==="ride"){
-    data.from=from.value;
-    data.to=to.value;
-    data.seats=Number(seats.value||0);
+    baseData.from = from.value;
+    baseData.to = to.value;
+    baseData.seats = Number(seats.value||0);
   }
-  if(category.value==="work") data.amount=Number(workPrice.value||0);
-  if(category.value==="idea") data.ideaType=ideaType.value;
-  if(category.value==="problem") data.problemType=problemType.value;
+  if(category.value==="work") baseData.amount = Number(workPrice.value||0);
+  if(category.value==="idea") baseData.ideaType = ideaType.value;
+  if(category.value==="problem") baseData.problemType = problemType.value;
 
-  try{
-    await addDoc(collection(db,"posts"),data);
-    alert("✅ Post saved");
-    location.reload();
-  }catch(e){
-    alert("❌ Error saving post");
+  const docRef = await addDoc(collection(db,"posts"), baseData);
+
+  alert("✅ Posted"); // ⚡ INSTANT
+
+  // 🔄 BACKGROUND IMAGE PROCESS
+  if(imageInput.files.length){
+    const file = imageInput.files[0];
+
+    (async ()=>{
+      if(file.size > MAX_IMAGE_SIZE) return;
+
+      const safe = await checkImageSafety(file);
+      if(!safe){
+        await updateDoc(doc(db,"posts",docRef.id),{
+          status:"rejected"
+        });
+        return;
+      }
+
+      const imageData = await readImageAsBase64(file);
+
+      await updateDoc(doc(db,"posts",docRef.id),{
+        image: imageData,
+        status:"open"
+      });
+    })();
+
+  }else{
+    await updateDoc(doc(db,"posts",docRef.id),{
+      status:"open"
+    });
   }
 };
+
 </script>
 
 </body>

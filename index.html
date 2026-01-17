@@ -293,18 +293,118 @@ function getDistance(lat1,lng1,lat2,lng2){
 /* ================= REALTIME POSTS ================= */
 function subscribeToPosts(){
   onSnapshot(collection(db,"posts"), async snap=>{
-    const temp = [];
-    for(const d of snap.docs){
-      const w = { id:d.id, ...d.data() };
+    for(const change of snap.docChanges()){
+      const w = { id: change.doc.id, ...change.doc.data() };
       w.senderName = await getUserName(w.postedBy);
       w.likes ||= [];
       w.comments ||= [];
-      temp.push(w);
+
+      if(change.type === "added"){
+        allWorks.push(w);
+        addWorkCard(w);
+      }
+
+      if(change.type === "modified"){
+        updateWorkCard(w);
+      }
+
+      if(change.type === "removed"){
+        removeWorkCard(w.id);
+      }
     }
-    allWorks = temp;
-    renderWorks(true);
   });
 }
+function passFilter(w){
+  const limit = distanceFilter.value;
+  const cat = categoryFilter.value;
+
+  if(w.status !== "open") return false;
+  if(cat !== "all" && w.category !== cat) return false;
+
+  if(
+    limit !== "all" &&
+    userLat !== null &&
+    userLng !== null &&
+    w.location?.lat &&
+    w.location?.lng
+  ){
+    const d = getDistance(
+      userLat, userLng,
+      Number(w.location.lat),
+      Number(w.location.lng)
+    );
+    if(d > Number(limit)) return false;
+  }
+
+  return true;
+}
+
+function addWorkCard(w){
+  if(!passFilter(w)) return;
+
+  const div = document.createElement("div");
+  div.className = "work-card";
+  div.id = "work-"+w.id;
+  div.innerHTML = buildHTML(w);
+
+  worksContainer.prepend(div); // WhatsApp jaisa newest upar
+}
+
+function updateWorkCard(w){
+  const el = document.getElementById("work-"+w.id);
+  if(!el) return addWorkCard(w);
+  if(!passFilter(w)) return el.remove();
+
+  el.innerHTML = buildHTML(w);
+}
+
+function removeWorkCard(id){
+  document.getElementById("work-"+id)?.remove();
+}
+function buildHTML(w){
+  const isSelf = currentUser && w.postedBy === currentUser.uid;
+  const distText = getDistanceText(w);
+
+  return `
+    <p><b>Category:</b> ${w.category}</p>
+    <p><b>Description:</b> ${w.description}</p>
+
+    ${w.image ? `<img src="${w.image}" class="post-image">` : ""}
+
+    <p>${
+      w.category==="ride" ? `From: ${w.from} → To: ${w.to}` :
+      w.category==="work" ? `Amount: ₹${w.amount}` :
+      ""
+    }</p>
+
+    <p><b>Status:</b>
+      <span class="status-badge status-open">${w.status}</span>
+    </p>
+
+    <p><b>Sender:</b> ${w.senderName}</p>
+    <p><b>Distance:</b> ${distText}</p>
+
+    ${w.category!=="idea"
+      ? `<button onclick="acceptWork('${w.id}')" ${isSelf?"disabled":""}>Accept</button>`
+      : ""
+    }
+
+    <button onclick="toggleLike('${w.id}')">❤️ ${w.likes.length}</button>
+    <button onclick="toggleComments('${w.id}')">💬 ${w.comments.length}</button>
+  `;
+}
+function getDistanceText(w){
+  if(userLat==null || userLng==null || !w.location) return "N/A";
+  const d = getDistance(
+    userLat,userLng,
+    Number(w.location.lat),
+    Number(w.location.lng)
+  );
+  if(d < 0.05) return "0 m";
+  if(d < 1) return Math.round(d*1000)+" m";
+  return d.toFixed(1)+" km";
+}
+
 
 /* ================= RENDER ================= */
 function renderWorks(force=false){
