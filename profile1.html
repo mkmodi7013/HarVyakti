@@ -4,145 +4,41 @@
 <meta charset="UTF-8">
 <title>My Profile | HarVyakti</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
 <style>
-:root{
-  --primary:#2563eb;
-  --secondary:#0ea5e9;
-  --bg:#f1f5f9;
-  --card:#ffffff;
-  --text:#0f172a;
-  --muted:#64748b;
-  --border:#e2e8f0;
-}
-*{box-sizing:border-box}
-body{
-  margin:0;
-  font-family:Inter,system-ui,sans-serif;
-  background:var(--bg);
-  padding-top:80px;
-}
-header{
-  position:fixed;top:0;width:100%;
-  background:linear-gradient(90deg,var(--primary),var(--secondary));
-  box-shadow:0 6px 20px rgba(0,0,0,.15);
-}
-.header-container{
-  max-width:1200px;margin:auto;
-  padding:14px 24px;
-  display:flex;justify-content:space-between;align-items:center;
-}
-.logo{color:#fff;font-size:1.7rem;font-weight:800}
-nav a{color:#fff;text-decoration:none;margin-left:24px;font-weight:600}
-main{max-width:760px;margin:auto;padding:24px}
-.card{
-  background:#fff;border-radius:18px;
-  padding:28px 32px;
-  box-shadow:0 20px 40px rgba(15,23,42,.08);
-}
-label{display:block;margin-top:18px;font-weight:600}
-input{
-  width:100%;margin-top:6px;
-  padding:12px;border-radius:10px;
-  border:1px solid var(--border)
-}
-.roles-box{
-  margin-top:14px;
-  display:grid;
-  grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); /* 2–3 columns */
-  gap:16px;
-}
-
-/* Individual role card */
-.role{
-  padding:14px;
-  border-radius:14px;
-  border:1px solid var(--border);
-  display:flex;
-  gap:12px;
-  align-items:center;
-  cursor:pointer;
-  transition: all 0.25s ease;
-  background:#f9fafb;
-  box-shadow:0 2px 6px rgba(0,0,0,0.05);
-}
-
-/* Hover effect */
-.role:hover{
-  background:linear-gradient(90deg,var(--primary),var(--secondary));
-  color:#fff;
-  border-color:transparent;
-  box-shadow:0 6px 14px rgba(0,0,0,0.15);
-}
-
-/* Checkbox styling */
-.role input[type="checkbox"]{
-  width:20px;
-  height:20px;
-  accent-color:var(--primary);
-  cursor:pointer;
-  flex-shrink:0;
-}
-
-/* Mobile responsiveness */
-@media(max-width:600px){
-  .roles-box{
-    grid-template-columns:1fr; /* single column on mobile */
-  }
-}
-
-button{
-  margin-top:24px;width:100%;
-  padding:14px;border:none;border-radius:14px;
-  background:linear-gradient(90deg,var(--primary),var(--secondary));
-  color:#fff;font-weight:700;font-size:16px;
-}
-#msg{margin-top:12px;text-align:center;color:var(--muted)}
+:root{--primary:#2563eb;--secondary:#0ea5e9;--bg:#f1f5f9;--card:#fff;--text:#0f172a;--muted:#64748b;--border:#e2e8f0;}
+*{box-sizing:border-box} body{margin:0;font-family:Inter,system-ui,sans-serif;background:var(--bg);padding-top:80px;}
+header{position:fixed;top:0;width:100%;background:linear-gradient(90deg,var(--primary),var(--secondary));box-shadow:0 6px 20px rgba(0,0,0,.15);}
+.header-container{max-width:1200px;margin:auto;padding:14px 24px;display:flex;justify-content:space-between;align-items:center;}
+.logo{color:#fff;font-size:1.7rem;font-weight:800;}
+main{max-width:760px;margin:auto;padding:24px;}
+.card{background:#fff;border-radius:18px;padding:28px 32px;box-shadow:0 20px 40px rgba(15,23,42,.08);}
+label{display:block;margin-top:18px;font-weight:600;}
+input{width:100%;margin-top:6px;padding:12px;border-radius:10px;border:1px solid var(--border);}
+button{margin-top:24px;width:100%;padding:14px;border:none;border-radius:14px;background:linear-gradient(90deg,var(--primary),var(--secondary));color:#fff;font-weight:700;font-size:16px;}
+.roles-box{margin-top:14px;display:grid;grid-template-columns:repeat(auto-fit, minmax(200px,1fr));gap:16px;}
+.role{padding:14px;border-radius:14px;border:1px solid var(--border);display:flex;gap:12px;align-items:center;cursor:pointer;transition:all 0.25s ease;background:#f9fafb;box-shadow:0 2px 6px rgba(0,0,0,0.05);}
+.role:hover{background:linear-gradient(90deg,var(--primary),var(--secondary));color:#fff;border-color:transparent;box-shadow:0 6px 14px rgba(0,0,0,0.15);}
+.role input[type="checkbox"]{width:20px;height:20px;accent-color:var(--primary);cursor:pointer;flex-shrink:0;}
+@media(max-width:600px){.roles-box{grid-template-columns:1fr;}}
+#msg{margin-top:12px;text-align:center;color:var(--muted);}
 </style>
 </head>
-
 <body>
 
-<header>
-  <div class="header-container">
-    <div class="logo">HarVyakti</div>
-    <nav>
-      
-     
-    </nav>
-  </div>
-</header>
+<header><div class="header-container"><div class="logo">HarVyakti</div></div></header>
 
 <main>
 <div class="card">
 <h2>My Profile</h2>
-
-<label>Name</label>
-<input id="name">
-
-<label>Email</label>
-<input id="email" disabled>
-
-<label>Mobile</label>
-<input id="mobile">
-
-<label>Address</label>
-<input id="address">
-
-<label>Location</label>
-<button id="locationBtn">📍 Set / Update Location</button>
-<p id="locStatus"></p>
-<label>💰 Your Coins</label>
-<input id="coins" disabled>
-
-<label>🔗 Your Referral Code</label>
-<input id="referralCode" disabled>
-
+<label>Name</label><input id="name">
+<label>Email</label><input id="email" disabled>
+<label>Mobile</label><input id="mobile">
+<label>Address</label><input id="address">
+<label>Location</label><button id="locationBtn">📍 Set / Update Location</button><p id="locStatus"></p>
+<label>💰 Your Coins</label><input id="coins" disabled>
+<label>🔗 Your Referral Code</label><input id="referralCode" disabled>
 <button id="shareBtn">📤 Share & Earn Coins</button>
-
-<label>Your Services</label>
-<div id="rolesBox">Loading…</div>
-
+<label>Your Services</label><div id="rolesBox">Loading…</div>
 <button id="saveBtn">Save Changes</button>
 <div id="msg"></div>
 </div>
@@ -151,88 +47,64 @@ button{
 <script type="module">
 import { auth, db } from "./firebase.js";
 import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import {
-  doc, getDoc, setDoc, collection, getDocs
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-const coinsInput = document.getElementById("coins");
-const referralCodeInput = document.getElementById("referralCode");
-const shareBtn = document.getElementById("shareBtn");
+import { doc, getDoc, setDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const nameInput = document.getElementById("name");
 const emailInput = document.getElementById("email");
 const mobileInput = document.getElementById("mobile");
 const addressInput = document.getElementById("address");
 const rolesBox = document.getElementById("rolesBox");
-const msg = document.getElementById("msg");
+const coinsInput = document.getElementById("coins");
+const referralCodeInput = document.getElementById("referralCode");
+const shareBtn = document.getElementById("shareBtn");
 const locationBtn = document.getElementById("locationBtn");
 const locStatus = document.getElementById("locStatus");
+const msg = document.getElementById("msg");
 
-let uid;
-let userLocation = null;
-let selectedRoles = [];
+let uid, userLocation = null, selectedRoles = [];
 
-/* 🔐 Auth check */
-onAuthStateChanged(auth, async user=>{
+/* ===== Auth check ===== */
+onAuthStateChanged(auth, async user => {
   if(!user){ location.href="login.html"; return; }
   uid = user.uid;
   emailInput.value = user.email;
-
   await loadProfile();
   await loadRoles();
 
-  // ✅ SHARE BUTTON FIX
-  const shareBtn = document.getElementById("shareBtn");
-shareBtn.onclick = () => {
-  const code = referralCodeInput.value;
-  if(!code || code==="—"){
-    alert("Please wait, referral code is being generated");
-    return;
-  }
-
-   const link = `https://mkmodi7013.github.io/HarVyakti/login.html?ref=${code}`;
-
-  window.open(
-    `https://wa.me/?text=Join HarVyakti 🚀 Earn coins 🪙 ${link}`,
-    "_blank"
-  );
-};
-
+  // Share button
+  shareBtn.onclick = () => {
+    const code = referralCodeInput.value;
+    if(!code || code==="—"){ alert("Referral code loading…"); return; }
+    const link = `${location.origin}/login.html?ref=${code}`;
+    window.open(`https://wa.me/?text=Join HarVyakti 🚀 Earn coins 🪙 ${link}`,"_blank");
+  };
 });
 
-
-/* 👤 Load profile */
+/* ===== Load Profile ===== */
 async function loadProfile(){
-  const docRef = doc(db,"users",uid);   // ✅ correct Firestore reference
+  const docRef = doc(db,"users",uid);
   const snap = await getDoc(docRef);
   if(!snap.exists()) return;
-
   const d = snap.data();
 
   nameInput.value = d.name || "";
   mobileInput.value = d.mobile || "";
   addressInput.value = d.address || "";
   selectedRoles = d.roles || [];
-
-  // 🪙 Coins
   coinsInput.value = d.coins ?? 0;
 
-  // 🔗 Referral code AUTO-GENERATE if missing
+  // Referral code generate if missing
   let code = d.referralCode;
   if(!code){
     code = "HV" + Math.random().toString(36).substring(2,8).toUpperCase();
-    await setDoc(docRef, { referralCode: code }, { merge: true });
+    await setDoc(doc(db,"users",uid), {referralCode: code}, {merge:true});
   }
   referralCodeInput.value = code;
 
-  if(d.location){
-    userLocation = d.location;
-    locStatus.innerText = "📍 Location saved";
-  }
+  if(d.location){ userLocation = d.location; locStatus.innerText="📍 Location saved"; }
 }
 
-
-
-/* 🧰 Load roles */
+/* ===== Load Roles ===== */
 async function loadRoles(){
   rolesBox.innerHTML="";
   const snap = await getDocs(collection(db,"primaryRoles"));
@@ -240,61 +112,42 @@ async function loadRoles(){
     const role = r.data().roleName;
     const label = document.createElement("label");
     label.className="role";
-
     const cb = document.createElement("input");
-    cb.type="checkbox";
-    cb.checked = selectedRoles.includes(role);
-
-    cb.onchange=()=>{
-      if(cb.checked && !selectedRoles.includes(role))
-        selectedRoles.push(role);
-      if(!cb.checked)
-        selectedRoles = selectedRoles.filter(x=>x!==role);
-    };
-
+    cb.type="checkbox"; cb.checked = selectedRoles.includes(role);
+    cb.onchange = ()=>{ if(cb.checked && !selectedRoles.includes(role)) selectedRoles.push(role); if(!cb.checked) selectedRoles = selectedRoles.filter(x=>x!==role); };
     label.appendChild(cb);
     label.append(" " + role);
     rolesBox.appendChild(label);
   });
 }
 
-/* 📍 Location */
-locationBtn.onclick=()=>{
-  if(!navigator.geolocation){
-    locStatus.innerText="Not supported"; return;
-  }
+/* ===== Location ===== */
+locationBtn.onclick = () => {
+  if(!navigator.geolocation){ locStatus.innerText="Not supported"; return; }
   locStatus.innerText="Fetching…";
   navigator.geolocation.getCurrentPosition(
-    pos=>{
-      userLocation={lat:pos.coords.latitude,lng:pos.coords.longitude};
-      locStatus.innerText="📍 Location updated";
-    },
-    ()=>locStatus.innerText="Permission denied",
+    pos => { userLocation={lat:pos.coords.latitude,lng:pos.coords.longitude}; locStatus.innerText="📍 Location updated"; },
+    () => locStatus.innerText="Permission denied",
     {timeout:5000}
   );
 };
 
-/* 💾 Save */
-document.getElementById("saveBtn").onclick=async()=>{
+/* ===== Save Profile ===== */
+document.getElementById("saveBtn").onclick = async () => {
   try{
     await setDoc(doc(db,"users",uid),{
-      name:nameInput.value.trim(),
-      mobile:mobileInput.value.trim(),
-      address:addressInput.value.trim(),
-      roles:selectedRoles,
-      location:userLocation,
-        profileComplete:true,
-      updatedAt:Date.now()
-    },{merge:true});
+      name: nameInput.value.trim(),
+      mobile: mobileInput.value.trim(),
+      address: addressInput.value.trim(),
+      roles: selectedRoles,
+      location: userLocation,
+      profileComplete: true,
+      updatedAt: Date.now()
+    }, {merge:true});
     msg.innerText="✅ Profile updated";
-     window.location.href = "dashboard.html";
-  }catch(e){
-    msg.innerText="❌ "+e.message;
-  }
+    window.location.href = "dashboard.html";
+  }catch(e){ msg.innerText="❌ "+e.message; }
 };
-
-
 </script>
-
 </body>
 </html>

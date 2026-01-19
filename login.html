@@ -5,22 +5,14 @@
 <title>Login / Signup | HarVyakti</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  body {
-    margin: 0;
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-  }
-  .box { background: #fff; padding:40px 35px; border-radius:15px; box-shadow:0 10px 25px rgba(0,0,0,0.15); width:100%; max-width:400px; text-align:center; }
-  .box h2 { margin-bottom:30px; color:#1976d2; font-size:2rem; }
-  .box input { width:100%; padding:12px 15px; margin:12px 0; border:1px solid #ccc; border-radius:8px; }
-  .box button { width:48%; padding:12px 0; margin:10px 1%; border:none; border-radius:25px; font-weight:bold; color:#fff; cursor:pointer; }
-  #signupBtn { background: linear-gradient(90deg, #4caf50, #66bb6a); }
-  #loginBtn { background: linear-gradient(90deg, #1976d2, #2196f3); }
-  #msg { margin-top: 15px; color: red; font-weight: bold; min-height: 20px; }
+body {margin:0;font-family:'Segoe UI',Tahoma,sans-serif; background:linear-gradient(135deg,#4facfe,#00f2fe); display:flex;justify-content:center;align-items:center;height:100vh;}
+.box {background:#fff;padding:40px 35px;border-radius:15px;box-shadow:0 10px 25px rgba(0,0,0,0.15);width:100%;max-width:400px;text-align:center;}
+.box h2 {margin-bottom:30px;color:#1976d2;font-size:2rem;}
+.box input {width:100%;padding:12px 15px;margin:12px 0;border:1px solid #ccc;border-radius:8px;}
+.box button {width:48%;padding:12px 0;margin:10px 1%;border:none;border-radius:25px;font-weight:bold;color:#fff;cursor:pointer;}
+#signupBtn {background: linear-gradient(90deg,#4caf50,#66bb6a);}
+#loginBtn {background: linear-gradient(90deg,#1976d2,#2196f3);}
+#msg {margin-top:15px;color:red;font-weight:bold;min-height:20px;}
 </style>
 </head>
 <body>
@@ -39,35 +31,34 @@
 <script type="module">
 import { auth, db } from "./firebase.js";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-const params = new URLSearchParams(window.location.search);
-const referralFromUrl = params.get("ref");
+import { doc, setDoc, getDoc, getDocs, collection } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
 const email = document.getElementById("email");
 const password = document.getElementById("password");
 const msg = document.getElementById("msg");
 const signupBtn = document.getElementById("signupBtn");
 const loginBtn = document.getElementById("loginBtn");
+const referralFromUrl = new URLSearchParams(window.location.search).get("ref");
 
-/* ================= SIGNUP ================= */
+// Generate referral code
+function generateReferralCode(){ return "HV" + Math.random().toString(36).substring(2,8).toUpperCase(); }
+
+/* ===== SIGNUP ===== */
 signupBtn.addEventListener("click", async () => {
   msg.innerText = "";
   if(!email.value || !password.value){ msg.innerText="Email & Password required"; return; }
   if(password.value.length<6){ msg.innerText="Password ≥ 6 chars"; return; }
 
-  signupBtn.disabled = true; loginBtn.disabled = true;
+  signupBtn.disabled = loginBtn.disabled = true;
 
-  try {
+  try{
     const res = await createUserWithEmailAndPassword(auth,email.value,password.value);
     const uid = res.user.uid;
+    const referralCode = generateReferralCode();
 
-    // save user info in Firestore with profileComplete=false
-    function generateReferralCode(){
-  return "HV" + Math.random().toString(36).substring(2,8).toUpperCase();
-}
-const referralCode = generateReferralCode();
-    await setDoc(doc(db,"users",uid), {
+    await setDoc(doc(db,"users",uid),{
       email: email.value,
-       referralCode: referralCode,   // ✅ HERE
+      referralCode: referralCode,
       coins: 0,
       referredBy: referralFromUrl || null,
       referralRewarded: false,
@@ -75,40 +66,49 @@ const referralCode = generateReferralCode();
       createdAt: new Date().toISOString(),
       roles: []
     });
-console.log("Referral code from URL:", referralFromUrl);
 
-    // redirect to profile completion page
-    window.location.href = "profile1.html";
+    // Reward coins to referrer (once)
+    if(referralFromUrl){
+      const usersSnap = await getDocs(collection(db,"users"));
+      const refUserDoc = usersSnap.docs.find(d=>d.data().referralCode === referralFromUrl);
+      if(refUserDoc){
+        const refUid = refUserDoc.id;
+        const refData = refUserDoc.data();
+        if(!refData.referralRewarded){
+          await setDoc(doc(db,"users",refUid), {
+            coins: (refData.coins || 0) + 10,
+            referralRewarded: true
+          }, {merge:true});
+        }
+      }
+    }
 
-  } catch(e){
-    msg.innerText = e.message;
-  } finally { signupBtn.disabled=false; loginBtn.disabled=false; }
+    window.location.href = "profile1.html"; // profile completion
+
+  }catch(e){ msg.innerText = e.message; }
+  finally{ signupBtn.disabled = loginBtn.disabled = false; }
 });
 
-/* ================= LOGIN ================= */
+/* ===== LOGIN ===== */
 loginBtn.addEventListener("click", async () => {
   msg.innerText = "";
   if(!email.value || !password.value){ msg.innerText="Email & Password required"; return; }
 
-  signupBtn.disabled = true; loginBtn.disabled = true;
+  signupBtn.disabled = loginBtn.disabled = true;
 
-  try {
+  try{
     const userCredential = await signInWithEmailAndPassword(auth,email.value,password.value);
     const uid = userCredential.user.uid;
-
     const snap = await getDoc(doc(db,"users",uid));
 
     if(snap.exists() && !snap.data().profileComplete){
-      // profile incomplete → redirect to profile page
-      window.location.href="profile1.html";
+      window.location.href="profile1.html"; // incomplete → profile
     } else {
-      // profile complete → redirect to dashboard
-      window.location.href="dashboard.html";
+      window.location.href="dashboard.html"; // complete → dashboard
     }
 
-  } catch(e){
-    msg.innerText = e.message;
-  } finally { signupBtn.disabled=false; loginBtn.disabled=false; }
+  }catch(e){ msg.innerText = e.message; }
+  finally{ signupBtn.disabled = loginBtn.disabled = false; }
 });
 </script>
 
