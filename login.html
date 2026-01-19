@@ -40,7 +40,8 @@
 import { auth, db } from "./firebase.js";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
+const params = new URLSearchParams(window.location.search);
+const referralFromUrl = params.get("ref");
 const email = document.getElementById("email");
 const password = document.getElementById("password");
 const msg = document.getElementById("msg");
@@ -74,6 +75,7 @@ const referralCode = generateReferralCode();
       createdAt: new Date().toISOString(),
       roles: []
     });
+console.log("Referral code from URL:", referralFromUrl);
 
     // redirect to profile completion page
     window.location.href = "profile1.html";
