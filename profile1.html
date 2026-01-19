@@ -75,7 +75,7 @@ onAuthStateChanged(auth, async user => {
   shareBtn.onclick = () => {
     const code = referralCodeInput.value;
     if(!code || code==="—"){ alert("Referral code loading…"); return; }
-    const link = `${location.origin}/login.html?ref=${code}`;
+    const link = `${location.origin}/HarVyakti/login.html?ref=${code}`;
     window.open(`https://wa.me/?text=Join HarVyakti 🚀 Earn coins 🪙 ${link}`,"_blank");
   };
 });
