@@ -132,6 +132,13 @@ button{
 <label>Location</label>
 <button id="locationBtn">📍 Set / Update Location</button>
 <p id="locStatus"></p>
+<label>💰 Your Coins</label>
+<input id="coins" disabled>
+
+<label>🔗 Your Referral Code</label>
+<input id="referralCode" disabled>
+
+<button id="shareBtn">📤 Share & Earn Coins</button>
 
 <label>Your Services</label>
 <div id="rolesBox">Loading…</div>
@@ -147,6 +154,9 @@ import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/f
 import {
   doc, getDoc, setDoc, collection, getDocs
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const coinsInput = document.getElementById("coins");
+const referralCodeInput = document.getElementById("referralCode");
+const shareBtn = document.getElementById("shareBtn");
 
 const nameInput = document.getElementById("name");
 const emailInput = document.getElementById("email");
@@ -166,24 +176,60 @@ onAuthStateChanged(auth, async user=>{
   if(!user){ location.href="login.html"; return; }
   uid = user.uid;
   emailInput.value = user.email;
+
   await loadProfile();
   await loadRoles();
+
+  // ✅ SHARE BUTTON FIX
+  const shareBtn = document.getElementById("shareBtn");
+shareBtn.onclick = () => {
+  const code = referralCodeInput.value;
+  if(!code || code==="—"){
+    alert("Please wait, referral code is being generated");
+    return;
+  }
+
+  const link = `${location.origin}/login.html?ref=${code}`;
+  window.open(
+    `https://wa.me/?text=Join HarVyakti 🚀 Earn coins 🪙 ${link}`,
+    "_blank"
+  );
+};
+
 });
+
 
 /* 👤 Load profile */
 async function loadProfile(){
-  const snap = await getDoc(doc(db,"users",uid));
+  const docRef = doc(db,"users",uid);   // ✅ correct Firestore reference
+  const snap = await getDoc(docRef);
   if(!snap.exists()) return;
+
   const d = snap.data();
+
   nameInput.value = d.name || "";
   mobileInput.value = d.mobile || "";
   addressInput.value = d.address || "";
   selectedRoles = d.roles || [];
+
+  // 🪙 Coins
+  coinsInput.value = d.coins ?? 0;
+
+  // 🔗 Referral code AUTO-GENERATE if missing
+  let code = d.referralCode;
+  if(!code){
+    code = "HV" + Math.random().toString(36).substring(2,8).toUpperCase();
+    await setDoc(docRef, { referralCode: code }, { merge: true });
+  }
+  referralCodeInput.value = code;
+
   if(d.location){
     userLocation = d.location;
     locStatus.innerText = "📍 Location saved";
   }
 }
+
+
 
 /* 🧰 Load roles */
 async function loadRoles(){
@@ -245,6 +291,8 @@ document.getElementById("saveBtn").onclick=async()=>{
     msg.innerText="❌ "+e.message;
   }
 };
+
+
 </script>
 
 </body>
